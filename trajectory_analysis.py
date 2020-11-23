@@ -13,6 +13,9 @@ def get_state_at_t(traj, times, t, last_step=0):
     for idx, i in enumerate(times):
         if i > t:
             return traj[idx-1], idx-1
+        elif i == t:
+            return traj[idx], idx
+    print("The final time step for the simulation was {:.2f}".format(times[-1]))
     raise IndexError("The simulation did not reach the requested time point. Try running the simulation again with more time steps.")
 
 

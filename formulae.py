@@ -12,4 +12,10 @@ def adaptive_sorting_meanN_theory(params, times):
     cstar = params.eta / params.delta
     zeta = params.alpha * params.KT * cstar / params.k_off
     occ = params.c / (params.c + cstar)
-    return [zeta * params.k_p * t * occ for t in times]
+    return [zeta * params.k_p**2 * t * occ for t in times]
+
+
+def mode1_relKOFF_theory(params, times):
+    const = (1 + params.x) / params.x
+    const = const * ((1 + params.x)**2 + 2 * params.k_p / params.k_off)
+    return [1 / (params.k_p * t) * const for t in times]
