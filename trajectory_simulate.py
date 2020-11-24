@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from params import DEFAULT_PARAMS
-from settings import DEFAULT_MODEL, VALID_MODELS, NUM_RXN, UPDATE_DICTS, NUM_STEPS, INIT_CONDS, STATE_SIZE, RECEPTOR_STATE_SIZE
+from settings import DEFAULT_MODEL, VALID_MODELS, NUM_RXN, NUM_STEPS, INIT_CONDS, STATE_SIZE, RECEPTOR_STATE_SIZE
 
 
 def update_state(state_timeseries, rxn_idx, step, model):
@@ -44,6 +44,28 @@ def propensities(state, model, params=DEFAULT_PARAMS):
         propensities[6] = p.delta * state[1] * state[4]                   # degrade K
 
     return propensities
+
+
+# reaction event update dictionary for each model
+UPDATE_DICTS = {
+    'mode_1': {0: np.array([1.0, 0.0]),  # binding
+               1: np.array([-1.0, 0.0]),  # unbinding
+               2: np.array([0.0, 1.0])},  # production
+    'kpr': {0: np.array([1.0, 0.0, 0.0]),  # binding
+            1: np.array([-1.0, 0.0, 0.0]),  # unbinding
+            2: np.array([-1.0, 1.0, 0.0]),  # kpr forward step
+            3: np.array([0.0, -1.0, 0.0]),  # fall off
+            4: np.array([0.0, 0.0, 1.0])},  # produce n
+    'adaptive_sorting':
+        #			     [0,    1,   2,   n,   K]
+            {0: np.array([-1.0, 1.0, 0.0, 0.0, 0.0]),  # ligand binding
+             1: np.array([1.0, -1.0, 0.0, 0.0, 0.0]),  # unbinding of ligand from state 1
+             2: np.array([0.0, -1.0, 1.0, 0.0, 0.0]),  # kpr forward step
+             3: np.array([1.0, 0.0, -1.0, 0.0, 0.0]),  # unbinding of ligand from state 2
+             4: np.array([0.0, 0.0, 0.0, 1.0, 0.0]),   # produce n
+             5: np.array([0.0, 0.0, 0.0, 0.0, 1.0]),   # produce K
+             6: np.array([0.0, 0.0, 0.0, 0.0, -1.0])}  # degrade K
+}
 
 
 def simulate_traj(num_steps=NUM_STEPS, init_cond=None, model=DEFAULT_MODEL, params=DEFAULT_PARAMS):
@@ -106,6 +128,7 @@ def multitraj(num_traj, bound_probabilities, num_steps=NUM_STEPS,
     else:
         init_cond_base = init_cond_input
     draws = np.random.choice(np.arange(0, RECEPTOR_STATE_SIZE[model]), size=num_traj, p=bound_probabilities)
+
     # simulate k trajectories
     for k in range(num_traj):
         init_vector = np.zeros(RECEPTOR_STATE_SIZE[model])

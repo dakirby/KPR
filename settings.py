@@ -23,6 +23,7 @@ GLOB_DELTA = 1.0
 # defined
 GLOB_X = GLOB_C * GLOB_K_ON / GLOB_K_OFF
 GLOB_PSS_BOUND = GLOB_X / (1 + GLOB_X)
+GLOB_PSS_UNBOUND = 1 - GLOB_PSS_BOUND
 
 # initial conditions (for single trajectory)
 GLOB_N0 = 0.0
@@ -52,23 +53,9 @@ RECEPTOR_STATE_SIZE = {'mode_1': 2,
 INIT_CONDS = {'mode_1': [0, GLOB_N0],
               'kpr': [0, 0, GLOB_N0],  # TODO handle init cond for kpr
               'adaptive_sorting': [GLOB_R0, 0, 0, GLOB_N0, GLOB_K0]}
-# reaction event update dictionary for each model
-UPDATE_DICTS = {
-    'mode_1': {0: np.array([1.0, 0.0]),  # binding
-               1: np.array([-1.0, 0.0]),  # unbinding
-               2: np.array([0.0, 1.0])},  # production
-    'kpr': {0: np.array([1.0, 0.0, 0.0]),  # binding
-            1: np.array([-1.0, 0.0, 0.0]),  # unbinding
-            2: np.array([-1.0, 1.0, 0.0]),  # kpr forward step
-            3: np.array([0.0, -1.0, 0.0]),  # fall off
-            4: np.array([0.0, 0.0, 1.0])},  # produce n
-    'adaptive_sorting':
-        #			     [0,    1,   2,   n,   K]
-            {0: np.array([-1.0, 1.0, 0.0, 0.0, 0.0]),  # ligand binding
-             1: np.array([1.0, -1.0, 0.0, 0.0, 0.0]),  # unbinding of ligand from state 1
-             2: np.array([0.0, -1.0, 1.0, 0.0, 0.0]),  # kpr forward step
-             3: np.array([1.0, 0.0, -1.0, 0.0, 0.0]),  # unbinding of ligand from state 2
-             4: np.array([0.0, 0.0, 0.0, 1.0, 0.0]),   # produce n
-             5: np.array([0.0, 0.0, 0.0, 0.0, 1.0]),   # produce K
-             6: np.array([0.0, 0.0, 0.0, 0.0, -1.0])}  # degrade K
-}
+
+# equilibrium receptor occupancies for each model
+g = GLOB_K_OFF / GLOB_K_F
+RECEPTOR_BOUND_PROBABILITIES = {'mode_1': [GLOB_PSS_UNBOUND, GLOB_PSS_BOUND],
+                                'kpr': [GLOB_PSS_UNBOUND, g / (1 + g) * GLOB_PSS_BOUND, 1 / (1 + g) * GLOB_PSS_BOUND],
+                                'adaptive_sorting': [GLOB_PSS_UNBOUND, g / (1 + g) * GLOB_PSS_BOUND, 1 / (1 + g) * GLOB_PSS_BOUND]}  # TODO: find actual equilibrium probabilities

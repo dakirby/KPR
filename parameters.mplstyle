@@ -15,8 +15,6 @@ savefig.dpi : 300 # Generally 300 is the accepted quality
 
 ## FONT
 font.size : 12
-font.family : serif
-font.serif : cm # cm -> Computer modern
 
 ## LINES
 
