@@ -19,7 +19,7 @@ def get_state_at_t(traj, times, t, last_step=0):
     raise IndexError("The simulation did not reach the requested time point. Try running the simulation again with more time steps.")
 
 
-def get_moment_timeseries(traj_array, times_array, params, model):
+def get_moment_timeseries(traj_array, times_array, params, model, moment_times=[]):
     """
     Returns, as a dict, multiple output timeseries (aligned to moment_times):
     return:  mean(n)(t), var(n)(t), distribution(n)(t), estimate_x(t)
@@ -28,7 +28,8 @@ def get_moment_timeseries(traj_array, times_array, params, model):
     num_traj = np.shape(traj_array)[-1]
     dt = np.mean(times_array[1, :])
     endtime = np.min(times_array[-1, :])
-    moment_times = np.arange(0.0, endtime, dt)
+    if moment_times == []:
+        moment_times = np.arange(0.0, endtime, dt)
     # pass previous step to get_state_at_t(...) to speedup
     last_step = np.zeros(num_traj, dtype=int)
     # prepare value dict
