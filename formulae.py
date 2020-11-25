@@ -40,6 +40,16 @@ def kpr_varN_theory(params, times):
     return [(term1 + term2) * params.k_p * t for t in times]
 
 
+def kpr_relKOFF_theory(params, times):
+    x = params.c * params.k_on / params.k_off
+    g = params.k_off / params.k_f
+    term1 = (1 + g)**2 * params.k_off * (1 + x)**2
+    term2 = 2 * params.k_p * (1 + g * (2 + x + g * (1 + x)*2))
+    num = (1 + x) * (1 + g) * (term1 + term2)
+    denom = params.k_off * params.k_p * x * (1 + g * (2 + x))**2
+    return [num / (denom * t) for t in times]
+
+
 def adaptive_sorting_meanN_theory(params, times):
     cstar = params.eta / params.delta
     zeta = params.alpha * params.KT * cstar / params.k_off
