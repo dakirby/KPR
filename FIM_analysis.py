@@ -19,29 +19,28 @@ if __name__ == '__main__':
     DEBUGGING = False
 
     # Model to investigate
-    model = 'mode_1'
-    #model = 'kpr'
+    #model = 'mode_1'
+    model = 'kpr'
     #model = 'adaptive_sorting'
 
     # Derivative method
     #method = 'secant'
-    #method = 'spline'
+    #method = 'poly'
     method = 'spline'
 
     METHODS = {'secant': secant_method,
                'spline': spline_method,
                'poly': polynomial_method}
 
-    # FIM test values
-    dKOFF = 3
+    # K_off sampling scheme
+    dKOFF = 1
     koffrange = np.arange(1E1, 5E1, dKOFF)
     num_test_koff = len(koffrange)
 
-    test_time = 1E1
-
+    TEST_TIME = 1E1
     # Simulation paramters
     SIM_PARAMS = {'mode_1': [int(1E3), 200],
-                  'kpr': [int(1E4), 200],
+                  'kpr': [int(1E5), 200],
                   'adaptive_sorting': [int(5E0), int(3E5)]}
 
     num_traj = SIM_PARAMS[model][0]
@@ -69,7 +68,7 @@ if __name__ == '__main__':
         if DEBUGGING:
             print("Done simulations")
 
-            if np.min(times_array[-1, :]) < test_time:
+            if np.min(times_array[-1, :]) < TEST_TIME:
                 print("The final time step for the simulation was {:.2f}".format(np.min(times_array[-1, :])))
                 raise IndexError("The simulation did not reach the requested time point. Try running the simulation again with more time steps.")
             else:
@@ -82,14 +81,14 @@ if __name__ == '__main__':
             print("Done collecting moment timeseries")
         else:
             dt = np.mean(times_array[1, :])
-            moment_times_input = np.array([test_time - dt, test_time, test_time + dt])
+            moment_times_input = np.array([TEST_TIME - dt, TEST_TIME, TEST_TIME + dt])
             simdata, moment_times = get_moment_timeseries(traj_array, times_array, params, model, moment_times=moment_times_input)
 
         meanN_sim = simdata['mean_n']
         varN_sim = simdata['var_n']
 
-        mean_n_at_test_time, _ = get_state_at_t(meanN_sim, moment_times, test_time, last_step=len(moment_times)-10)
-        var_n_at_test_time, _ = get_state_at_t(varN_sim, moment_times, test_time, last_step=len(moment_times)-10)
+        mean_n_at_test_time, _ = get_state_at_t(meanN_sim, moment_times, TEST_TIME, last_step=len(moment_times)-10)
+        var_n_at_test_time, _ = get_state_at_t(varN_sim, moment_times, TEST_TIME, last_step=len(moment_times)-10)
 
         record.append([koff, mean_n_at_test_time, var_n_at_test_time])
 
@@ -101,7 +100,7 @@ if __name__ == '__main__':
         if DEBUGGING:
             if model == 'mode_1':
                 # Mean n
-                print("<n>(kp*t={}) = {}".format(params.k_p * test_time, mean_n_at_test_time))
+                print("<n>(kp*t={}) = {}".format(params.k_p * TEST_TIME, mean_n_at_test_time))
 
                 kpt_axis = moment_times * params.k_p
                 estimate_n = mode1_meanN_theory(params, moment_times)
@@ -114,7 +113,7 @@ if __name__ == '__main__':
                 plt.show()
 
                 # Variance in n
-                print("Var(n)(kp*t={}) = {}".format(params.k_p * test_time, var_n_at_test_time))
+                print("Var(n)(kp*t={}) = {}".format(params.k_p * TEST_TIME, var_n_at_test_time))
 
                 kpt_axis = moment_times * params.k_p
                 estimate_n_var = mode1_varN_theory(params, moment_times)
@@ -128,7 +127,7 @@ if __name__ == '__main__':
 
             elif model == 'kpr':
                 # Mean n
-                print("<n>(kp*t={}) = {}".format(params.k_p * test_time, mean_n_at_test_time))
+                print("<n>(kp*t={}) = {}".format(params.k_p * TEST_TIME, mean_n_at_test_time))
 
                 kpt_axis = moment_times * params.k_p
                 estimate_n = kpr_meanN_theory(params, moment_times)
@@ -141,7 +140,7 @@ if __name__ == '__main__':
                 plt.show()
 
                 # Variance in n
-                print("Var(n)(kp*t={}) = {}".format(params.k_p * test_time, var_n_at_test_time))
+                print("Var(n)(kp*t={}) = {}".format(params.k_p * TEST_TIME, var_n_at_test_time))
 
                 kpt_axis = moment_times * params.k_p
                 estimate_n_var = kpr_varN_theory(params, moment_times)
@@ -154,7 +153,7 @@ if __name__ == '__main__':
                 plt.show()
 
             elif model == 'adaptive_sorting':
-                print("<n>(kp*t={}) = {}".format(params.k_p * test_time, mean_n_at_test_time))
+                print("<n>(kp*t={}) = {}".format(params.k_p * TEST_TIME, mean_n_at_test_time))
 
                 kpt_axis = moment_times * params.k_p
                 estimate_n = adaptive_sorting_meanN_theory(params, moment_times)
@@ -205,8 +204,8 @@ if __name__ == '__main__':
         theory_var = []
         for koff in koff_axis:
             params.k_off = koff
-            theory_n.append(theory_dict[model][0](params, [test_time])[0])
-            theory_var.append(theory_dict[model][1](params, [test_time])[0])
+            theory_n.append(theory_dict[model][0](params, [TEST_TIME])[0])
+            theory_var.append(theory_dict[model][1](params, [TEST_TIME])[0])
         axes[0, 0].plot(koff_axis, theory_n, label='Theory')
 
     axes[0, 0].set_xlabel(r'$k_{off}$')
@@ -236,14 +235,13 @@ if __name__ == '__main__':
         for idx, koff in enumerate(np.logspace(np.log10(min_koff), np.log10(max_koff), 50)):
             params = DEFAULT_PARAMS
             params.k_off = koff
-            theory_line.append([koff, rel_theory[model](params, [test_time])[0]])
+            theory_line.append([koff, rel_theory[model](params, [TEST_TIME])[0]])
         theory_line = np.array(theory_line)
         axes[1, 1].plot(theory_line[:, 0], theory_line[:, 1], 'g', label='theory')
 
     axes[1, 1].set_xlim([min(koff_axis), max(koff_axis)])
-    if min(rel_koff) < 1.8:
-        axes[1, 1].set_ylim([0, 2])
-    elif max(rel_koff)/min(rel_koff) > 1000:
+    axes[1, 1].set_ylim(np.percentile(rel_koff, [0, 95]))  # contain 95% of data
+    if max(rel_koff)/min(rel_koff) > 1000:
         axes[1, 1].set_yscale('log')
     axes[1, 1].legend()
     axes[1, 1].set_xlabel(r'$k_{off}$')
@@ -268,12 +266,14 @@ if __name__ == '__main__':
 
     # Plot dmu_dkoff
     axes[1, 0].scatter(list(zip(*dmu_dkoff))[0], list(zip(*dmu_dkoff))[1], label='simulation')
-    if model == 'mode_1':
+    if model in ['mode_1', 'kpr']:
+        theory_grad = {'mode_1': mode1_dNdKOFF_theory,
+                       'kpr': kpr_dNdKOFF_theory}
         dmu_dkoff_theory_line = []
         for idx, koff in enumerate(np.logspace(np.log10(min_koff), np.log10(max_koff), 50)):
             params = DEFAULT_PARAMS
             params.k_off = koff
-            dmu_dkoff_theory_line.append([koff, mode1_dNdKOFF_theory(params, [test_time])[0]])
+            dmu_dkoff_theory_line.append([koff, theory_grad[model](params, [TEST_TIME])[0]])
         dmu_dkoff_theory_line = np.array(dmu_dkoff_theory_line)
         axes[1, 0].plot(dmu_dkoff_theory_line[:, 0], dmu_dkoff_theory_line[:, 1], 'g', label='theory')
     axes[1, 0].set_xlabel(r'$k_{off}$')

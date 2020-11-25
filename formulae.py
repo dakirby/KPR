@@ -50,6 +50,14 @@ def kpr_relKOFF_theory(params, times):
     return [num / (denom * t) for t in times]
 
 
+def kpr_dNdKOFF_theory(params, times):
+    x = params.c * params.k_on / params.k_off
+    g = params.k_off / params.k_f
+    num = - params.k_p * x * (1 + g * (2 + x))
+    denom = (1 + g)**2 * params.k_off * (1 + x)**2
+    return [num * t / denom for t in times]
+
+
 def adaptive_sorting_meanN_theory(params, times):
     cstar = params.eta / params.delta
     zeta = params.alpha * params.KT * cstar / params.k_off
