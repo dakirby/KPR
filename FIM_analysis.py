@@ -20,8 +20,8 @@ if __name__ == '__main__':
 
     # Model to investigate
     #model = 'mode_1'
-    model = 'kpr'
-    #model = 'adaptive_sorting'
+    #model = 'kpr'
+    model = 'adaptive_sorting'
 
     # Derivative method
     #method = 'secant'
@@ -33,7 +33,7 @@ if __name__ == '__main__':
                'poly': polynomial_method}
 
     # K_off sampling scheme
-    dKOFF = 1
+    dKOFF = 5
     koffrange = np.arange(1E1, 5E1, dKOFF)
     num_test_koff = len(koffrange)
 
@@ -94,7 +94,8 @@ if __name__ == '__main__':
 
         # update progress to user
         percent_done = (idx + 1) / num_test_koff * 100
-        print("{:.2f}".format(percent_done) + '% done')
+        if not DEBUGGING:
+            print("{:.2f}".format(percent_done) + '% done')
 
         # for debugging purposes
         if DEBUGGING:

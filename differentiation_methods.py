@@ -24,7 +24,7 @@ def secant_method(record):
     return dmu_dkoff, delta_koff_sq, None
 
 
-def spline_method(record):
+def spline_method(record, knot_threshold=4):
     """ Splines are supposed to be a more stable way of getting numerical
     derivatives from data. Cubic splines are the typical choice, but 4-th order
     splines seem to produce a more stable estimate of the first derivative in
@@ -33,7 +33,14 @@ def spline_method(record):
     x = [el[0] for el in record]
     y = [el[1] for el in record]
     var_n = np.array([el[2] for el in record])
-    spline = interpolate.UnivariateSpline(x, y, k=4, s=0.5)
+
+    smoothing = 0.5
+    spline = interpolate.UnivariateSpline(x, y, k=4, s=smoothing)
+    num_knots = len(spline.get_knots())
+    while num_knots > knot_threshold:
+        smoothing += 1.0
+        spline.set_smoothing_factor(smoothing)
+        num_knots = len(spline.get_knots())
     grad_func = spline.derivative()
     grad = grad_func(x)
     dmu_dkoff = list(zip(x, grad))
