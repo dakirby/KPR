@@ -34,8 +34,8 @@ METHODS = {'secant': secant_method,
            'poly': polynomial_method}
 
 # K_off sampling scheme
-dKOFF = 0.5
-koffrange = np.arange(1E-1, 5E1, dKOFF)
+dKOFF = 0.025
+koffrange = np.arange(1E-2, 5E1, dKOFF)
 num_test_koff = len(koffrange)
 
 TEST_TIME = 1E1
@@ -193,7 +193,7 @@ if __name__ == '__main__':
 
     else:
         # Multiprocessing to find moments as a function of koff
-        record = process_map(thread_func, koffrange, max_workers=num_threads)
+        record = process_map(thread_func, koffrange, max_workers=num_threads, chunksize=1)
 
         # Write record to file
         df = pd.DataFrame(record, columns=["koff", "mean_N", "var_N"])
