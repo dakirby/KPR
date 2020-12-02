@@ -68,3 +68,31 @@ def polynomial_method(record):
     delta = [record[i][2] / (dmu_dkoff[i][1]**2) for i in range(len(dmu_dkoff))]
     delta_koff_sq = list(zip(x, delta))
     return dmu_dkoff, delta_koff_sq, fit
+
+
+def inverse_polynomial_method(record):
+    """ By inspection, the curve may appear like f[x] = 1/x. If this is the case
+    then it may be useful to fit a polynomial to the inverse data and then work
+    out the derivative of our uninverted function analytically:
+
+    If p[k] is the polynomial fit to the inverse data 1/n[k],
+    then -p'[k] * n[k]**2 is the functional form for n'[k]
+    """
+    x = [el[0] for el in record]
+    y = [el[1] for el in record]
+    y_inv = [1 / el[1] for el in record]
+    coeffs = np.polyfit(x, y_inv, 1)
+    print("Polynomial coefficients: {}".format(coeffs))
+    fit = np.poly1d(coeffs)
+    grad_func = np.polyder(fit, m=1)
+    inverse_grad = [grad_func(koff) for koff in x]  # p'[k] from documentation
+    dmu_dkoff = [-inverse_grad[i] * y[i]**2 for i in range(len(y))]  # analytic form for the gradient we want
+    dmu_dkoff = list(zip(x, dmu_dkoff))
+    delta = [record[i][2] / (dmu_dkoff[i][1]**2) for i in range(len(dmu_dkoff))]
+    delta_koff_sq = list(zip(x, delta))
+
+    def fit_mean(x):
+        """ The function returned should reproduce the mean response data """
+        return 1 / fit(x)
+
+    return dmu_dkoff, delta_koff_sq, fit_mean

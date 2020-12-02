@@ -10,7 +10,7 @@ from settings import RECEPTOR_STATE_SIZE, FOLDER_OUTPUT, RECEPTOR_BOUND_PROBABIL
 from trajectory_simulate import multitraj
 from trajectory_analysis import get_moment_timeseries, get_state_at_t
 from formulae import *
-from differentiation_methods import polynomial_method, spline_method, secant_method
+from differentiation_methods import polynomial_method, spline_method, secant_method, inverse_polynomial_method
 
 plt.style.use('parameters.mplstyle')
 
@@ -20,22 +20,24 @@ plt.style.use('parameters.mplstyle')
 DEBUGGING = False
 
 # Model to investigate
-model = 'mode_1'
+#model = 'mode_1'
 #model = 'kpr'
-#model = 'adaptive_sorting'
+model = 'adaptive_sorting'
 
 # Derivative method
 #method = 'secant'
 #method = 'poly'
-method = 'spline'
+#method = 'spline'
+method = 'invpoly'
 
 METHODS = {'secant': secant_method,
            'spline': spline_method,
-           'poly': polynomial_method}
+           'poly': polynomial_method,
+           'invpoly': inverse_polynomial_method}
 
 # K_off sampling scheme
-dKOFF = 0.025
-koffrange = np.arange(1E-2, 5E1, dKOFF)
+dKOFF = 3
+koffrange = np.arange(1E1, 5E1, dKOFF)
 num_test_koff = len(koffrange)
 
 TEST_TIME = 1E1
@@ -62,7 +64,7 @@ def find_num_steps(num_traj, num_steps, model, RECEPTOR_BOUND_PROBABILITIES, TES
     the stochasticity is minimized by the number of trajectories being used.
     """
     params = DEFAULT_PARAMS
-    params.k_off = koff
+
     # simulate trajectories
     traj_array, times_array = multitraj(num_traj, num_steps=num_steps, model=model, params=params,
                                         bound_probabilities=RECEPTOR_BOUND_PROBABILITIES[model])
@@ -213,7 +215,8 @@ if __name__ == '__main__':
             print(mean_fit.get_knots())
         # Compare to theory
         theory_dict = {"mode_1": [mode1_meanN_theory, mode1_varN_theory],
-                       "kpr": [kpr_meanN_theory, kpr_varN_theory]}
+                       "kpr": [kpr_meanN_theory, kpr_varN_theory],
+                       "adaptive_sorting": [adaptive_sorting_meanN_theory, None]}
 
         print("Plotting")
         fig, axes = plt.subplots(nrows=2, ncols=2)
@@ -222,20 +225,20 @@ if __name__ == '__main__':
         koff_axis = [el[0] for el in record]
         axes[0, 0].plot(koff_axis, [el[1] for el in record], label='Simulation')
 
-        if method in ['spline', 'poly']:
+        if method in ['spline', 'poly', 'invpoly']:
             koff_fine_axis = np.arange(koff_axis[0], koff_axis[-1], dKOFF*0.1)
             fit = mean_fit(koff_fine_axis)
             axes[0, 0].plot(koff_fine_axis, fit, label=method)
 
-        if model in ["mode_1", "kpr"]:
-            theory_n = []
-            theory_var = []
-            params = DEFAULT_PARAMS
-            for koff in koff_axis:
-                params.k_off = koff
-                theory_n.append(theory_dict[model][0](params, [TEST_TIME])[0])
+        theory_n = []
+        theory_var = []
+        params = DEFAULT_PARAMS
+        for koff in koff_axis:
+            params.k_off = koff
+            theory_n.append(theory_dict[model][0](params, [TEST_TIME])[0])
+            if model in ["mode_1", "kpr"]:
                 theory_var.append(theory_dict[model][1](params, [TEST_TIME])[0])
-            axes[0, 0].plot(koff_axis, theory_n, label='Theory')
+        axes[0, 0].plot(koff_axis, theory_n, label='Theory')
 
         axes[0, 0].set_xlabel(r'$k_{off}$')
         axes[0, 0].set_ylabel(r'$\langle n \rangle$')
@@ -295,16 +298,16 @@ if __name__ == '__main__':
 
         # Plot dmu_dkoff
         axes[1, 0].scatter(list(zip(*dmu_dkoff))[0], list(zip(*dmu_dkoff))[1], label='simulation')
-        if model in ['mode_1', 'kpr']:
-            theory_grad = {'mode_1': mode1_dNdKOFF_theory,
-                           'kpr': kpr_dNdKOFF_theory}
-            dmu_dkoff_theory_line = []
-            for idx, koff in enumerate(np.logspace(np.log10(min_koff), np.log10(max_koff), 50)):
-                params = DEFAULT_PARAMS
-                params.k_off = koff
-                dmu_dkoff_theory_line.append([koff, theory_grad[model](params, [TEST_TIME])[0]])
-            dmu_dkoff_theory_line = np.array(dmu_dkoff_theory_line)
-            axes[1, 0].plot(dmu_dkoff_theory_line[:, 0], dmu_dkoff_theory_line[:, 1], 'g', label='theory')
+        theory_grad = {'mode_1': mode1_dNdKOFF_theory,
+                       'kpr': kpr_dNdKOFF_theory,
+                       'adaptive_sorting': adaptive_sorting_dNdKOFF_theory}
+        dmu_dkoff_theory_line = []
+        for idx, koff in enumerate(np.logspace(np.log10(min_koff), np.log10(max_koff), 50)):
+            params = DEFAULT_PARAMS
+            params.k_off = koff
+            dmu_dkoff_theory_line.append([koff, theory_grad[model](params, [TEST_TIME])[0]])
+        dmu_dkoff_theory_line = np.array(dmu_dkoff_theory_line)
+        axes[1, 0].plot(dmu_dkoff_theory_line[:, 0], dmu_dkoff_theory_line[:, 1], 'g', label='theory')
         axes[1, 0].set_xlabel(r'$k_{off}$')
         axes[1, 0].set_ylabel(r'$\partial \mu / \partial k_{off}$')
         axes[1, 0].set_title('Numerical Gradient')

@@ -16,5 +16,8 @@ class Params:
         self.KT = KT
         self.R0 = R0
 
+    def unpack(self):
+        return self.c, self.k_on, self.k_off, self.k_p, self.k_f, self.alpha, self.eta, self.delta, self.KT, self.R0
+
 
 DEFAULT_PARAMS = Params()
