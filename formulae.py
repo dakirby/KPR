@@ -81,3 +81,31 @@ def kpr_dNdKOFF_theory(params, times):
     num = - params.k_p * x * (1 + g * (2 + x))
     denom = (1 + g)**2 * params.k_off * (1 + x)**2
     return [num * t / denom for t in times]
+
+
+def dimeric_meanN_theory(params, times):
+    K1 = params.k_d1 / params.k_a1
+    K2 = params.k_d2 / params.k_a2
+    K4 = params.k_d4 / params.k_a4
+    IFN = params.c
+    Delta = params.R1 - params.R2
+    Rt = params.R1 + params.R2
+    B = 1 + K4 * (IFN + K2) * (IFN + K1) / (Rt * IFN * K1)
+    Teq = (Rt / 2) * (B - sqrt(B**2 - 1 + (Delta / Rt)**2))
+    return [Teq * params.k_p * t for t in times]
+
+
+def dimeric_dNdKOFF_theory(params, times):
+    K1 = params.k_d1 / params.k_a1
+    K2 = params.k_d2 / params.k_a2
+    K4 = params.k_d4 / params.k_a4
+    IFN = params.c
+    Delta = params.R1 - params.R2
+    Rt = params.R1 + params.R2
+    ka1 = params.k_a1
+    B = 1 + K4 * (IFN + K2) * (IFN + K1) / (Rt * IFN * K1)
+    sqrt_term = sqrt(-1 + B**2 + Delta**2 / Rt**2)
+    num = (IFN + K2) * (IFN**2 * K4 + IFN * K1 * K4 + IFN * K2 * K4 + K1 * K2 * K4 + IFN * K1 * Rt - IFN * K1 * Rt * sqrt_term)
+    denom = 2 * IFN * K1**2 * ka1 * Rt * sqrt_term
+    const = num / denom
+    return [const * params.k_p * t for t in times]

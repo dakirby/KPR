@@ -37,7 +37,7 @@ def get_moment_timeseries(traj_array, times_array, params, model, moment_times=[
                      'var_n': None,
                      'distribution_n': None}
 
-    n_idx = {'mode_1': 1, 'kpr': 2, 'adaptive_sorting': 3}[model]
+    n_idx = {'mode_1': 1, 'kpr': 2, 'adaptive_sorting': 3, 'dimeric': 5}[model]
     moment_curves['mean_n'] = np.zeros(len(moment_times))
     moment_curves['var_n'] = np.zeros(len(moment_times))
     moment_curves['distribution_n'] = np.zeros((len(moment_times), num_traj), dtype=int)

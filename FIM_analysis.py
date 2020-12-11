@@ -6,7 +6,7 @@ from multiprocessing import cpu_count
 from tqdm.contrib.concurrent import process_map
 
 from params import DEFAULT_PARAMS
-from settings import RECEPTOR_STATE_SIZE, FOLDER_OUTPUT, RECEPTOR_BOUND_PROBABILITIES
+from settings import RECEPTOR_STATE_SIZE, FOLDER_OUTPUT, RECEPTOR_BOUND_PROBABILITIES, GLOB_KA1
 from trajectory_simulate import multitraj
 from trajectory_analysis import get_moment_timeseries, get_state_at_t
 from formulae import *
@@ -22,13 +22,14 @@ DEBUGGING = False
 # Model to investigate
 #model = 'mode_1'
 #model = 'kpr'
-model = 'adaptive_sorting'
+#model = 'adaptive_sorting'
+model = 'dimeric'
 
 # Derivative method
 #method = 'secant'
 #method = 'poly'
-#method = 'spline'
-method = 'invpoly'
+method = 'spline'
+#method = 'invpoly'
 
 METHODS = {'secant': secant_method,
            'spline': spline_method,
@@ -36,15 +37,20 @@ METHODS = {'secant': secant_method,
            'invpoly': inverse_polynomial_method}
 
 # K_off sampling scheme
-dKOFF = 3
-koffrange = np.arange(1E1, 5E1, dKOFF)
+if model == 'dimeric':
+    dKOFF = 0.0025 * GLOB_KA1
+    koffrange = np.arange(0.001 * GLOB_KA1, 5*GLOB_KA1, dKOFF)
+else:
+    dKOFF = 3
+    koffrange = np.arange(1E1, 5E1, dKOFF)
 num_test_koff = len(koffrange)
 
 TEST_TIME = 1E1
 # Simulation paramters
 SIM_PARAMS = {'mode_1': [int(1E3), 200],
               'kpr': [int(1E5), 200],
-              'adaptive_sorting': [int(5E0), int(3E5)]}
+              'adaptive_sorting': [int(5E0), int(3E5)],
+              'dimeric': [int(1E2), int(5E5)]}
 
 num_traj = SIM_PARAMS[model][0]
 num_steps = SIM_PARAMS[model][1]
@@ -81,7 +87,7 @@ def find_num_steps(num_traj, num_steps, model, RECEPTOR_BOUND_PROBABILITIES, TES
         print("Collecting moment timeseries")
         simdata, moment_times = get_moment_timeseries(traj_array, times_array, params, model)
         print("Done collecting moment timeseries")
-    else:
+    else:  # speed-up for adaptive sorting because it is expensive to compute
         dt = np.mean(times_array[1, :])
         moment_times_input = np.array([TEST_TIME - dt, TEST_TIME, TEST_TIME + dt])
         simdata, moment_times = get_moment_timeseries(traj_array, times_array, params, model, moment_times=moment_times_input)
@@ -216,7 +222,8 @@ if __name__ == '__main__':
         # Compare to theory
         theory_dict = {"mode_1": [mode1_meanN_theory, mode1_varN_theory],
                        "kpr": [kpr_meanN_theory, kpr_varN_theory],
-                       "adaptive_sorting": [adaptive_sorting_meanN_theory, None]}
+                       "adaptive_sorting": [adaptive_sorting_meanN_theory, None],
+                       "dimeric": [dimeric_meanN_theory, None]}
 
         print("Plotting")
         fig, axes = plt.subplots(nrows=2, ncols=2)
@@ -300,7 +307,8 @@ if __name__ == '__main__':
         axes[1, 0].scatter(list(zip(*dmu_dkoff))[0], list(zip(*dmu_dkoff))[1], label='simulation')
         theory_grad = {'mode_1': mode1_dNdKOFF_theory,
                        'kpr': kpr_dNdKOFF_theory,
-                       'adaptive_sorting': adaptive_sorting_dNdKOFF_theory}
+                       'adaptive_sorting': adaptive_sorting_dNdKOFF_theory,
+                       'dimeric': dimeric_dNdKOFF_theory}
         dmu_dkoff_theory_line = []
         for idx, koff in enumerate(np.logspace(np.log10(min_koff), np.log10(max_koff), 50)):
             params = DEFAULT_PARAMS

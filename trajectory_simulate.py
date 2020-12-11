@@ -42,6 +42,17 @@ def propensities(state, model, params=DEFAULT_PARAMS):
         propensities[4] = p.k_p * state[2]                                # produce n
         propensities[5] = p.eta * (p.KT - state[4])                       # produce K
         propensities[6] = p.delta * state[1] * state[4]                   # degrade K
+    elif model == 'dimeric':
+        # state = [R1free, R2free, B1, B2, T, n]
+        propensities[0] = p.k_a1 * p.c * state[0]                         # binding R1
+        propensities[1] = p.k_d1 * state[2]                               # unbinding B1
+        propensities[2] = p.k_a2 * p.c * state[1]                         # binding R2
+        propensities[3] = p.k_d2 * state[3]                               # unbinding B2
+        propensities[4] = p.k_a3 * state[2] * state[1]                    # binding R2 to B1
+        propensities[5] = p.k_d3 * state[4]                               # unbinding T to B1
+        propensities[6] = p.k_a4 * state[3] * state[0]                    # binding R1 to B2
+        propensities[7] = p.k_d4 * state[4]                               # unbinding T to B2
+        propensities[8] = p.k_p * state[4]                                # produce n
 
     return propensities
 
@@ -64,7 +75,18 @@ UPDATE_DICTS = {
              3: np.array([1.0, 0.0, -1.0, 0.0, 0.0]),  # unbinding of ligand from state 2
              4: np.array([0.0, 0.0, 0.0, 1.0, 0.0]),   # produce n
              5: np.array([0.0, 0.0, 0.0, 0.0, 1.0]),   # produce K
-             6: np.array([0.0, 0.0, 0.0, 0.0, -1.0])}  # degrade K
+             6: np.array([0.0, 0.0, 0.0, 0.0, -1.0])}, # degrade K
+    'dimeric':
+        #			 [R1free, R2free, B1, B2,   T,   n]
+            {0: np.array([-1.0, 0.0, 1.0, 0.0, 0.0, 0.0]),   # binding R1
+             1: np.array([1.0, 0.0, -1.0, 0.0, 0.0, 0.0]),   # unbinding B1
+             2: np.array([0.0, -1.0, 0.0, 1.0, 0.0, 0.0]),   # binding R2
+             3: np.array([0.0, 1.0, 0.0, -1.0, 0.0, 0.0]),   # unbinding R2
+             4: np.array([0.0, -1.0, -1.0, 0.0, 1.0, 0.0]),  # binding R2 to B1
+             5: np.array([0.0, 1.0, 1.0, 0.0, -1.0, 0.0]),   # unbinding T to B1
+             6: np.array([-1.0, 0.0, 0.0, -1.0, 1.0, 0.0]),  # binding R1 to B2
+             7: np.array([1.0, 0.0, 0.0, 1.0, -1.0, 0.0]),   # unbinding T to B2
+             8: np.array([0.0, 0.0, 0.0, 0.0, 0.0, 1.0])},  # produce n
 }
 
 
@@ -133,7 +155,7 @@ def multitraj(num_traj, bound_probabilities, num_steps=NUM_STEPS,
     for k in range(num_traj):
         init_vector = np.zeros(RECEPTOR_STATE_SIZE[model])
         init_vector[draws[k]] = 1
-        if model == 'adaptive_sorting':
+        if model in ['adaptive_sorting', 'dimeric']:
             pass  # use the initial conditions given
         else:
             # init_cond_base does not contain unbound state
@@ -147,17 +169,28 @@ def multitraj(num_traj, bound_probabilities, num_steps=NUM_STEPS,
 
 if __name__ == '__main__':
     # settings
-    model = 'adaptive_sorting'
-    num_traj = 500
-    num_steps = 10000
-    init_bound = [1.0, 0.0, 0.0]
+    model = 'dimeric'
+    num_traj = 50
+    num_steps = int(1E4)
+    init_bound = np.eye(RECEPTOR_STATE_SIZE[model])[0]
+
+    if model == 'dimeric':
+        CUSTOM_PARAMS = DEFAULT_PARAMS
+        CUSTOM_PARAMS.k_p = 1E-4
+        CUSTOM_PARAMS.c = 6.022E9
+    else:
+        CUSTOM_PARAMS = DEFAULT_PARAMS
     # compute
-    traj_array, times_array = multitraj(num_traj, bound_probabilities=init_bound, num_steps=num_steps, model=model)
+    traj_array, times_array = multitraj(num_traj,
+                                        bound_probabilities=init_bound,
+                                        num_steps=num_steps,
+                                        model=model,
+                                        params=CUSTOM_PARAMS)
 
     # plot trajectories
     for k in range(num_traj):
         times_k = times_array[:, k]
-        traj_k = traj_array[:, 1, k]
+        traj_k = traj_array[:, -1, k]
         plt.plot(times_k, traj_k, '--', lw=0.5, alpha=0.5)
     # decorate
     plt.title('Model: %s - %d trajectories' % (model, num_traj))
