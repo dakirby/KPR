@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from params import Params, DEFAULT_PARAMS
-from settings import RECEPTOR_STATE_SIZE, INIT_CONDS
+from settings import RECEPTOR_STATE_SIZE, INIT_CONDS, NUM_STEPS, DEFAULT_MODEL
 from trajectory_plotting import plot_traj_and_mean_sd, plot_means, plot_vars, plot_hist, plot_estimation
 from trajectory_simulate import multitraj
 
@@ -56,6 +56,35 @@ def get_moment_timeseries(traj_array, times_array, params, model, moment_times=[
         moment_curves['mean_n'][idx] = statesum / num_traj
         moment_curves['var_n'][idx] = statesquaresum / num_traj - moment_curves['mean_n'][idx]**2
     return moment_curves, moment_times
+
+
+def moment_dose_response(c_range, num_traj, moment_times, bound_probabilities,
+                         num_steps=NUM_STEPS, model=DEFAULT_MODEL,
+                         params=DEFAULT_PARAMS, init_cond_input=[]):
+    """
+    Returns, as a dict, multiple output timeseries (aligned to concentrations
+    in c_range, then moment_times):
+    return:  mean(n)(t), var(n)(t), distribution(n)(t), estimate_x(t) for each
+             concentration in c_range
+    Example indexing:  moment_curves['mean_n'][c_idx, t_idx]
+    """
+    moment_curves_list = {'mean_n': [], 'var_n': [], 'distribution_n': []}
+    for c in c_range:
+        params.c = c
+        traj_array, times_array = multitraj(num_traj, bound_probabilities,
+                                            num_steps=num_steps,
+                                            model=model,
+                                            params=params,
+                                            init_cond_input=init_cond_input)
+        moment_curves, _ = get_moment_timeseries(traj_array, times_array,
+                                                 params, model,
+                                                 moment_times=moment_times)
+        for key in moment_curves_list.keys():
+            moment_curves_list[key].append(moment_curves[key])
+    # convert to ndarray
+    for key in moment_curves_list.keys():
+        moment_curves_list[key] = np.array(moment_curves_list[key])
+    return moment_curves_list
 
 
 if __name__ == '__main__':

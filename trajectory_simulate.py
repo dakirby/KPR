@@ -169,7 +169,7 @@ def multitraj(num_traj, bound_probabilities, num_steps=NUM_STEPS,
 
 if __name__ == '__main__':
     # settings
-    model = 'dimeric'
+    model = 'adaptive_sorting'
     num_traj = 50
     num_steps = int(1E4)
     init_bound = np.eye(RECEPTOR_STATE_SIZE[model])[0]
