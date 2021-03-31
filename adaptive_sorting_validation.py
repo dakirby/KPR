@@ -1,100 +1,88 @@
 import matplotlib.pyplot as plt
 import numpy as np
+from pysb.simulator.bng import BngSimulator
+from pysb import Initial, Monomer
+import warnings
 
-from params import Params, DEFAULT_PARAMS
-from settings import RECEPTOR_STATE_SIZE, INIT_CONDS, DEFAULT_MODEL, NUM_STEPS
-from trajectory_plotting import plot_traj_and_mean_sd, plot_means, plot_vars, plot_hist, plot_estimation
-from trajectory_simulate import multitraj
-from trajectory_analysis import get_moment_timeseries, moment_dose_response
-
-plt.style.use('parameters.mplstyle')
+from adaptive_sorting import model as as_model
+from allosteric import model as allo_model
+from dimeric import model as dimeric_model
 
 
-def response_curve(koff_range, c_range, num_traj, moment_times,
-                   num_steps=NUM_STEPS, init_cond=None, model=DEFAULT_MODEL,
-                   params=DEFAULT_PARAMS):
-    """
-    Returns, as a dict, multiple output timeseries (aligned to the threshold n
-    determing response, then koff in koff_range, then concentrations in
-    c_range, then moment_times):
-    return:  response_curves (list) indexed as [n_threshold_idx, koff_idx, t_idx]
-             n_curves (list)
-    """
-    min_n = 0.
-    max_n = np.inf
-    moment_curves_list = {'mean_n': [], 'var_n': [], 'distribution_n': []}
-    # run simulations
-    for koff in koff_range:
-        dr_tc = moment_dose_response(c_range, num_traj, moment_times,
-                                     init_cond, num_steps=num_steps,
-                                     model=model, params=params)
-        min_n_part = np.min(dr_tc['mean_n'])
-        max_n_part = np.max(dr_tc['mean_n'])
-        if min_n_part > min_n:
-            min_n = min_n_part
-        if max_n_part < max_n:
-            max_n = max_n_part
-        for key in moment_curves_list.keys():
-            moment_curves_list[key].append(dr_tc[key])
-    # convert to ndarray
-    for key in moment_curves_list.keys():
-        moment_curves_list[key] = np.array(moment_curves_list[key])
-        # sample indexing: dict['mean_n'][koff_idx, c_idx, t_idx]
-    # find response curves
-    n_curves = list(range(int(min_n), int(max_n)))
-    n_lookup = [] # indexed as [n_thrshld_idx, koff_idx, t_idx]
-    for n_thrshld in n_curves:
-        response_curves = np.zeros((len(koff_range), len(moment_times))) # indexed as [koff_idx, t_idx]
-        for koff_idx, koff in enumerate(koff_range):
-            for t_idx, t in enumerate(moment_times):
-                diff = moment_curves_list['mean_n'][koff_idx, :, t_idx] - n_thrshld
-                c_idx = np.argmin(np.abs(diff))
-                L = moment_curves_list['mean_n'][koff_idx, c_idx, t_idx]
-                response_curves[koff_idx, t_idx] = L
-        n_lookup.append(response_curves)
-    n_lookup = np.array(n_lookup)
-    return n_lookup, np.array(n_curves)
+def dose_response(model, c_range, c_name, t_end, n_runs, num_times=10):
+    assert n_runs > 1
+    t = np.linspace(0, t_end, num_times)
+    observables = model.observables.keys()
+    resp = {obs: np.zeros((n_runs, len(c_range))) for obs in observables}
+    # simulate
+    for c_idx, c in enumerate(c_range):
+        model.parameters[c_name].value = c
+        sim = BngSimulator(model)
+        x = sim.run(tspan=t, verbose=False, n_runs=n_runs, method='ssa')
+        y = np.array(x.observables)
+        for obs in observables:
+            resp[obs][:, c_idx] = y[obs][:, -1]
+    return resp
+
+
+def response_curve(model, c_range, c_name, koff_range, koff_name, obs_thrs, obs_name, t_end, n_runs):
+    c_typical = np.zeros(len(koff_range))
+    for koff_idx, koff in enumerate(koff_range):
+        # simulate
+        model.parameters[koff_name].value = koff
+        y = dose_response(model, c_range, c_name, t_end, n_runs)
+        mean_traj = np.mean(y[obs_name], axis=0)
+        # std_traj = np.std(y[obs_name], axis=0)
+
+        # find response
+        c_typical_idx = np.argmin(np.abs(mean_traj - obs_thrs))
+        if c_typical_idx == 0 or c_typical_idx == len(c_range):
+            warnings.warn("c_range may not be large enough to find appropriate c needed to reach obs_thrs")
+        c_typical[koff_idx] = c_range[c_typical_idx]
+
+        # update progress to user
+        print("{:.1f}%".format(100 * (koff_idx+1) / len(koff_range)))
+    return np.array(c_typical)
 
 
 if __name__ == '__main__':
-    # settings
-    model = 'mode_1'
+    model_type = 'dimeric'
+    plot_dr = True
+    plot_rc = False
+    crange = np.logspace(0, 4, 15) * 1E-12*1E-5*6.022E23
+    koffrange = 1 / np.arange(3, 20, 2)
+    t_end = 40
+    num_traj = 50
 
-    num_traj = 250
-    num_steps = 1400
-    koff_range = np.logspace(-9, 3, num=15)
-    c_range = np.logspace(3, 8)
-    moment_times = list(range(7))
+    # --------------------------------------------------------------------------
+    if model_type == 'adaptive_sorting':
+        model = as_model
+        n_threshold = 1.
+    elif model_type == 'allosteric':
+        model = allo_model
+        n_threshold = 2E2
+    elif model_type == 'dimeric':
+        model = dimeric_model
+        n_threshold = 2E2
+    else:
+        raise NotImplementedError
 
-    # model specification
-    params = DEFAULT_PARAMS
-    receptor_init_cond = np.zeros(RECEPTOR_STATE_SIZE[model])
-    receptor_init_cond[0] = 1.0
-    # simulate trajectories
-    traj_array_list = []
-    times_array = []
+    if plot_dr:
+        y = dose_response(model, crange, 'L_0', t_end, num_traj)
+        mean_traj = np.mean(y['Cn'], axis=0)
+        std_traj = np.std(y['Cn'], axis=0)
 
-    # dose_response_tc = moment_dose_response(c_range, num_traj, moment_times,
-    #                                         receptor_init_cond,
-    #                                         num_steps=num_steps, model=model,
-    #                                         params=params)
-    # y1 = dose_response_tc['mean_n'][:, -1] + np.sqrt(dose_response_tc['var_n'][:, -1])
-    # y2 = dose_response_tc['mean_n'][:, -1] - np.sqrt(dose_response_tc['var_n'][:, -1])
-    # fig, ax = plt.subplots()
-    # plt.plot(c_range, dose_response_tc['mean_n'][:, -1], 'k')
-    # ax.fill_between(c_range, y1, y2, alpha=0.5)
-    # plt.xscale('log')
-    # plt.show()
-    # exit()
-    n_lookup, n_curves = response_curve(koff_range, c_range, num_traj,
-                                        moment_times, num_steps=num_steps,
-                                        init_cond=receptor_init_cond,
-                                        model=model, params=params)
-    mean_n_thrshld = int(np.mean(n_curves))
-    thrshld_idx = np.argmin(np.abs(n_curves-mean_n_thrshld))
-    plt.plot(1/koff_range, n_lookup[thrshld_idx, :, -1])
-    plt.xlabel('tau')
-    plt.ylabel('L')
-    plt.xscale('log')
-    plt.yscale('log')
-    plt.show()
+        fig, ax = plt.subplots()
+        plt.plot(crange, mean_traj, 'k--')
+        ax.fill_between(crange, mean_traj + std_traj, mean_traj - std_traj, 'k', alpha=0.1)
+        plt.xscale('log')
+        plt.show()
+
+    if plot_rc:
+        response = response_curve(model, crange, 'L_0', koffrange, 'koff', n_threshold, 'Cn', t_end, num_traj)
+        fig, ax = plt.subplots()
+        plt.plot(1 / koffrange, response, 'k--')
+        plt.yscale('log')
+        plt.xlabel(r'$\tau$ (s)')
+        plt.ylabel('[Ligand]')
+        plt.show()
