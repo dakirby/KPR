@@ -1,8 +1,8 @@
 import matplotlib.pyplot as plt
 import numpy as np
 from pysb.simulator.bng import BngSimulator
-from pysb import Initial, Monomer
 import warnings
+from differentiation_methods import spline_method
 
 from adaptive_sorting import model as as_model
 from allosteric import model as allo_model
@@ -45,44 +45,46 @@ def response_curve(model, c_range, c_name, koff_range, koff_name, obs_thrs, obs_
     return np.array(c_typical)
 
 
+def cEst_dimeric(T, model):
+    Rt = model.parameters['R1_0'].value + model.parameters['R2_0'].value
+    Delta = model.parameters['R1_0'].value - model.parameters['R2_0'].value
+    K1 = model.parameters['kd1'].value / model.parameters['ka1'].value
+    K2 = model.parameters['kd2'].value / model.parameters['ka2'].value
+    K4 = model.parameters['kd4'].value / model.parameters['ka4'].value
+    numerator_t1 = K1*Rt**2 - 4*K1*K4*T - 4*K2*K4*T - 4*K1*Rt*T + 4*K1*T**2-K1*Delta**2
+    numerator_t2 = -64*K1*K2*(K4**2)*(T**2) + (-K1*Rt**2 + 4*K1*K4*T + 4*K2*K4*T + 4*K1*Rt*T - 4*K1*T**2 + K1*Delta**2)**2
+    return (numerator_t1 - np.sqrt(numerator_t2)) / (8*K4*T)
+
+
 if __name__ == '__main__':
     model_type = 'dimeric'
-    plot_dr = True
-    plot_rc = False
-    crange = np.logspace(0, 4, 15) * 1E-12*1E-5*6.022E23
-    koffrange = 1 / np.arange(3, 20, 2)
-    t_end = 40
-    num_traj = 50
+    t_end = 500
+    num_traj = 200
 
     # --------------------------------------------------------------------------
-    if model_type == 'adaptive_sorting':
-        model = as_model
-        n_threshold = 1.
-    elif model_type == 'allosteric':
-        model = allo_model
-        n_threshold = 2E2
-    elif model_type == 'dimeric':
+    if model_type == 'dimeric':
         model = dimeric_model
-        n_threshold = 2E2
+        crange = np.logspace(0, 3, 15) * 1E-9*1E-5*6.022E23
+        est_fn = cEst_dimeric
     else:
         raise NotImplementedError
 
-    if plot_dr:
-        y = dose_response(model, crange, 'L_0', t_end, num_traj)
-        mean_traj = np.mean(y['Cn'], axis=0)
-        std_traj = np.std(y['Cn'], axis=0)
+    print("Simulating")
+    y = dose_response(model, crange, 'L_0', t_end, num_traj)
+    print("Computing statistics")
+    mean_traj = np.mean(y['Cn'], axis=0)
+    var_traj = np.var(y['Cn'], axis=0)
+    print("Computing MLE")
+    MLE = est_fn(mean_traj, model)
+    print("Computing derivatives")
+    _, MLE_error, _ = spline_method(list(zip(crange, mean_traj, var_traj)))
+    MLE_error = np.array([el[1] for el in MLE_error])
 
-        fig, ax = plt.subplots()
-        plt.plot(crange, mean_traj, 'k--')
-        ax.fill_between(crange, mean_traj + std_traj, mean_traj - std_traj, 'k', alpha=0.1)
-        plt.xscale('log')
-        plt.show()
-
-    if plot_rc:
-        response = response_curve(model, crange, 'L_0', koffrange, 'koff', n_threshold, 'Cn', t_end, num_traj)
-        fig, ax = plt.subplots()
-        plt.plot(1 / koffrange, response, 'k--')
-        plt.yscale('log')
-        plt.xlabel(r'$\tau$ (s)')
-        plt.ylabel('[Ligand]')
-        plt.show()
+    print("Plotting")
+    plt.plot(crange, MLE_error)
+    plt.plot(crange, 1 / mean_traj)
+    plt.xscale('log')
+    plt.xlabel('c')
+    plt.ylabel('Estimation error')
+    plt.title('Dimeric Receptor')
+    plt.show()

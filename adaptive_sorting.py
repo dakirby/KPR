@@ -5,14 +5,6 @@ Implemented by: Duncan Kirby
 from __future__ import print_function
 from pysb import *
 
-
-def intialize_model(init={'R_0': 1E4, 'K_0': 1E3, 'L_0': 1E2}):
-    temp = []
-    for key, val in init.items():
-        temp.append(Parameter(key, val))
-    return temp
-
-
 Model()
 
 Monomer('R', ['s', 'e', 'i'], {'s': ['u', 'p']})    # Receptor
@@ -31,7 +23,9 @@ Parameter('eps', 1.)        # K activation rate const.
 Parameter('kp', 0.)         # N phosphorylation rate
 Parameter('ku', 0.)         # N dephos. rate
 
-intialize_model()
+Parameter('R_0', 1E4)
+Parameter('K_0', 1E3)
+Parameter('L_0', 1E2)
 
 Initial(R(e=None, i=None, s='u'), R_0)
 Initial(K(s='u'), K_0)
