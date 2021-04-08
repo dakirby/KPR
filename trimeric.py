@@ -82,7 +82,7 @@ Rule('B3_bind_R2', R3(re=1,ri=None)%L(r1=None,r2=None,r3=1) + R2(re=None,ri=None
 
 Rule('T12_bind_R3', R1(re=1,ri=None)%L(r1=1,r2=2,r3=None)%R2(re=2,ri=None) + R3(re=None,ri=None) | R1(re=1,ri=None)%L(r1=1,r2=2,r3=3)%R2(re=2,ri=None)%R3(re=3,ri=None), deltaa3, deltad3)
 Rule('T13_bind_R2', R1(re=1,ri=None)%L(r1=1,r2=None,r3=3)%R3(re=3,ri=None) + R2(re=None,ri=None) | R1(re=1,ri=None)%L(r1=1,r2=2,r3=3)%R2(re=2,ri=None)%R3(re=3,ri=None), deltaa2, deltad2)
-Rule('T23_bind_R1', R3(re=1,ri=None)%L(r1=None,r2=2,r3=3)%R2(re=2,ri=None) + R1(re=None,ri=None) | R1(re=1,ri=None)%L(r1=1,r2=2,r3=3)%R2(re=2,ri=None)%R3(re=3,ri=None), deltaa1, deltad1)
+Rule('T23_bind_R1', R3(re=1,ri=None)%L(r1=None,r2=2,r3=1)%R2(re=2,ri=None) + R1(re=None,ri=None) | R1(re=1,ri=None)%L(r1=1,r2=2,r3=3)%R2(re=2,ri=None)%R3(re=3,ri=None), deltaa1, deltad1)
 
 
 Rule('Signal', R1(re=1,ri=None)%L(r1=1,r2=2,r3=3)%R2(re=2,ri=None)%R3(re=3,ri=None) + N(s='u') >> R1(re=1,ri=None)%L(r1=1,r2=2,r3=3)%R2(re=2,ri=None)%R3(re=3,ri=None) + N(s='p'), kpa)
