@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
+import os
 from pysb.simulator.bng import BngSimulator
 import warnings
 from differentiation_methods import spline_method
@@ -59,7 +60,7 @@ def cEst_dimeric(T, model):
 if __name__ == '__main__':
     model_type = 'dimeric'
     t_end = 500
-    num_traj = 200
+    num_traj = 500
 
     # --------------------------------------------------------------------------
     if model_type == 'dimeric':
@@ -74,17 +75,17 @@ if __name__ == '__main__':
     print("Computing statistics")
     mean_traj = np.mean(y['Cn'], axis=0)
     var_traj = np.var(y['Cn'], axis=0)
-    print("Computing MLE")
-    MLE = est_fn(mean_traj, model)
-    print("Computing derivatives")
-    _, MLE_error, _ = spline_method(list(zip(crange, mean_traj, var_traj)))
-    MLE_error = np.array([el[1] for el in MLE_error])
+    std_traj = np.sqrt(var_traj)
 
     print("Plotting")
-    plt.plot(crange, MLE_error)
-    plt.plot(crange, 1 / mean_traj)
+    fig, ax = plt.subplots()
+    plt.plot(crange, mean_traj)
+    ax.fill_between(crange, mean_traj + std_traj, mean_traj - std_traj, 'b', alpha=0.2)
+    # theory says variance in Cn should be Var(Cn) = Cn
+    plt.plot(crange, mean_traj + np.sqrt(mean_traj), 'k--')
+    plt.plot(crange, mean_traj - np.sqrt(mean_traj), 'k--')
     plt.xscale('log')
     plt.xlabel('c')
-    plt.ylabel('Estimation error')
+    plt.ylabel('Signal (T)')
     plt.title('Dimeric Receptor')
-    plt.show()
+    plt.savefig('output'+os.sep+'dimeric_variance_validation.pdf')
