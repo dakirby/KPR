@@ -23,20 +23,18 @@ Parameter('kd3', 3E-4)
 Parameter('ka4', 3.623188E-4)
 Parameter('kd4', 0.3)
 
-Parameter('kpa', 1E-6)
-Parameter('kpu', 1E-3)
+Parameter('kp', 1E-6)
+Parameter('ku', 1E-3)
 
 
 Parameter('L_0', 6.022E9)
 Parameter('R1_0', 2000)
 Parameter('R2_0', 2000)
-Parameter('N_0', 1E4)
 
 # Initialization
 Initial(L(r1=None,r2=None), L_0)
 Initial(R1(re=None, ri=None), R1_0)
 Initial(R2(re=None, ri=None), R2_0)
-Initial(N(s='u'), N_0)
 
 # Observables
 Observable('Nobs', N(s='p'))
@@ -48,9 +46,7 @@ Rule('L_bind_R2', R2(re=None,ri=None) + L(r1=None,r2=None) | R2(re=1,ri=None)%L(
 Rule('B1_bind_R2', R1(re=1,ri=None)%L(r1=1,r2=None) + R2(re=None,ri=None) | R1(re=1,ri=None)%L(r1=1,r2=2)%R2(re=2,ri=None), ka3, kd3)
 Rule('B2_bind_R1', R2(re=2,ri=None)%L(r1=None,r2=2) + R1(re=None,ri=None) | R1(re=1,ri=None)%L(r1=1,r2=2)%R2(re=2,ri=None), ka4, kd4)
 
-Rule('Signal', R1(re=1,ri=None)%L(r1=1,r2=2)%R2(re=2,ri=None) + N(s='u') >> R1(re=1,ri=None)%L(r1=1,r2=2)%R2(re=2,ri=None) + N(s='p'), kpa)
-Rule('N_dephos', N(s='p') >> N(s='u'), kpu)
-
+Rule('Signal', R1(re=1,ri=None)%L(r1=1,r2=2)%R2(re=2,ri=None) >> R1(re=1,ri=None)%L(r1=1,r2=2)%R2(re=2,ri=None) + N(s='p'), kp)
 
 if __name__ == '__main__':
     print(__doc__, "\n", model)

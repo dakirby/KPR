@@ -1,14 +1,28 @@
+import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 import os
 from copy import deepcopy
 from pysb.simulator.bng import BngSimulator
+import warnings
 
 from allosteric import model as allo_model
 from KPR1 import model as KPR1_model
 from adaptive_sorting import model as as_model
 from dimeric import model as dimeric_model
 from trimeric import model as trimeric_model
+
+# Mathematica-style plotting
+FRAMECOLOR = '#737373'
+matplotlib.rcParams['text.color'] = FRAMECOLOR
+matplotlib.rcParams['axes.labelcolor'] = FRAMECOLOR
+matplotlib.rcParams['xtick.color'] = FRAMECOLOR
+matplotlib.rcParams['ytick.color'] = FRAMECOLOR
+matplotlib.rcParams['axes.edgecolor'] = FRAMECOLOR
+
+COLOURLIST = [(0.368417, 0.506779, 0.709798), (0.880722, 0.611041, 0.142051),
+              (0.922526, 0.385626, 0.209179), (0.560181, 0.691569, 0.194885),
+              (0.528488, 0.470624, 0.701351), (0.772079, 0.431554, 0.102387)]
 
 
 def HN_ratio(model, delta, koff_name, obs_name, t_end, **kwargs):
@@ -39,6 +53,7 @@ def HN_ratio(model, delta, koff_name, obs_name, t_end, **kwargs):
             model.parameters[name].value = model.parameters[name].value * delta
     else:
         model.parameters[koff_name].value = model.parameters[koff_name].value * delta
+
     sim2 = BngSimulator(model)
     x2 = sim2.run(tspan=t, verbose=False, n_runs=n_runs, method='ssa')
     y2 = np.array(x2.observables)[obs_name][:, -1]  # last time point for t.c.
@@ -55,6 +70,8 @@ def HN_ratio(model, delta, koff_name, obs_name, t_end, **kwargs):
     for idx in range(len(y1)):
         if y1[idx] == np.float64(0) or y2[idx] == np.float64(0):
             del_list.append(idx)
+    if len(del_list) == len(y1):
+        warnings.warn("Some choices of parameter produced no signal.")
     y1 = np.delete(y1, del_list)
     y2 = np.delete(y2, del_list)
 
@@ -93,57 +110,65 @@ def HN_curve(model, params, **kwargs):
     return mean_line, upper, lower
 
 
-COLOURLIST = [(0.368417, 0.506779, 0.709798), (0.880722, 0.611041, 0.142051),
-              (0.560181, 0.691569, 0.194885), (0.922526, 0.385626, 0.209179),
-              (0.528488, 0.470624, 0.701351), (0.772079, 0.431554, 0.102387)]
-
-
 if __name__ == '__main__':
     # set up parameters
     MODELS = [allo_model, KPR1_model, dimeric_model]
     LABELS = ["Naive", r"KPR$_1$", "Dimeric"]
 
+    # simulation parameters
     delta_range = np.logspace(-3, 0, num=15)
-    n_runs = 200
+    n_runs = 1000
 
-    g = 1E2
-    c = 1E-7
+    # model parameters
+    c = 1E-9
+    koff = 1
+    kf = 0.001
+    kon = 2E5
+    R0 = 1E2
     NA = 6.023E23
-    tissue_cell_density = 1E9 / 1E-3  # 1 billion cells per mL in tissue
+    tissue_cell_density = 1E5  # 1 billion cells per mL in tissue
     volEC = 1 / tissue_cell_density
-    params = {'R_0': 1E2, 'L_0': int(c*NA*volEC), 'kappa': 1E6/(NA*volEC),
-              'koff': 1, 'kf': 1 / g}
+    radius = 1E-5
+    volPM = 4 * 3.14 * radius**2
+
+    params = {'R_0': R0,
+              'R1_0': R0/2, 'R2_0': R0/2,
+              'L_0': int(c*NA*volEC),
+              'kp': 1, 'ku': 0,
+              'kappa': kon/(NA*volEC), 'koff': koff, 'kf': kf,
+              'ka1': kon/(NA*volEC), 'ka2': kon/(NA*volEC),
+              'kd1': koff, 'kd2': koff,
+              'ka3': kf, 'ka4': kf,
+              'kd3': koff, 'kd4': koff}
 
     # simulation
     lines = []
     for idx, model in enumerate(MODELS):
+        print(LABELS[idx])
         if LABELS[idx] == "Dimeric":
             koff_name = ['kd1', 'kd2', 'kd3', 'kd4']
-            tissue_cell_density = 1E5  # this is what was used in the model
-            volEC1 = 1 / tissue_cell_density
-
-            # homodimer parameters
-            params = {'R1_0': 1E2, 'R2_0': 1E2,  # theoretical maximum matches monomer case
-                      'L_0': int(c*NA*volEC1),
-                      'ka1': 1E6/(NA*volEC1), 'ka2': 1E6/(NA*volEC1),
-                      'kd1': 1, 'kd2': 1,
-                      'ka3': 1 / g, 'ka4': 1 / g,
-                      'kd3': 1, 'kd4': 1}
-            mean_line, upper, lower = HN_curve(model, {}, n_runs=n_runs, obs_name='Nobs', koff_name=koff_name)
+            mean_line, upper, lower = HN_curve(model, params, n_runs=n_runs, obs_name='Nobs', koff_name=koff_name)
+        elif LABELS[idx] == r"KPR$_1$":
+            mean_line, upper, lower = HN_curve(model, params, n_runs=n_runs, obs_name='Nobs', t_end=1E5)
         else:
             mean_line, upper, lower = HN_curve(model, params, n_runs=n_runs, obs_name='Nobs')
         lines.append((mean_line, upper, lower))
 
     # plotting
-    fig, ax = plt.subplots()
+    fig, ax = plt.subplots(figsize=(7, 4))
     for i in range(len(lines)):
         plt.plot(delta_range, lines[i][0], color=COLOURLIST[i], label=LABELS[i])
         ax.fill_between(delta_range, lines[i][1], lines[i][2], color=COLOURLIST[i], alpha=0.1)
     plt.xscale('log')
     plt.yscale('log')
-    ax.legend(loc=1)
+    plt.ylim(bottom=0.5)
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
     plt.xlabel(r'Relative binding strength $\delta$')
     plt.ylabel(r'$\eta_{HN} = \frac{C_{N}[\delta \cdot k_{off}]}{C_{N}[k_{off}]}$')
-    plt.show()
+    plt.title('Signal gain in strong proofreading regime')
+
+    plt.legend(loc=6, bbox_to_anchor=(1, 0.5), frameon=False)
+    plt.tight_layout()
+    #plt.show()
+    plt.savefig('output' + os.sep + 'Signal_gain_vs_delta.pdf')
