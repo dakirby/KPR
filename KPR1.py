@@ -17,14 +17,16 @@ Monomer('N', ['s'], {'s': ['u', 'p']})              # response molecule
 Parameter('kappa', 1e-4)    # association rate
 Parameter('koff', 0.1)      # dissociation rate
 Parameter('kf', 0.001)      # proofreading rate
-Parameter('kp', 0.)         # N phosphorylation rate
-Parameter('ku', 0.)         # N dephos. rate
+Parameter('kp', 1E-6)         # N phosphorylation rate
+Parameter('ku', 1E-3)         # N dephos. rate
 
 Parameter('R_0', 1E4)
 Parameter('L_0', 1E2)
+Parameter('N_0', 1E4)
 
 Initial(R(e=None, i=None, s='u'), R_0)
 Initial(L(e=None), L_0)
+Initial(N(s='u'), N_0)
 
 Observable('Nobs', N(s='p'))
 Observable('Cn', L(e=1)%R(e=1, s='p1'))

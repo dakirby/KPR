@@ -20,16 +20,18 @@ Parameter('alpha', 3E-4)    # receptor phosphorylation rate
 Parameter('b', 0.)          # receptor dephos. rate
 Parameter('delta', 1.)      # K deactivation rate const.
 Parameter('eps', 1.)        # K activation rate const.
-Parameter('kp', 0.)         # N phosphorylation rate
-Parameter('ku', 0.)         # N dephos. rate
+Parameter('kp', 1E-6)         # N phosphorylation rate
+Parameter('ku', 1E-3)         # N dephos. rate
 
 Parameter('R_0', 1E4)
 Parameter('K_0', 1E3)
 Parameter('L_0', 1E2)
+Parameter('N_0', 1E4)
 
 Initial(R(e=None, i=None, s='u'), R_0)
 Initial(K(s='u'), K_0)
 Initial(L(e=None), L_0)
+Initial(N(s='u'), N_0)
 
 Observable('Nobs', N(s='p'))
 Observable('Cn', R(s='p'))

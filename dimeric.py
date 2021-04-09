@@ -14,7 +14,7 @@ Monomer('R2', ['re', 'ri'])
 Monomer('N', ['s'], {'s': ['u', 'p']})
 
 # Parameter values taken from working IFN model
-Parameter('ka1', 3.321155762205247e-14)
+Parameter('ka1', 3.321155762205247e-14)  # =(2E5 M^-1 s^-1)/(NA*(1E-5 Litres)))
 Parameter('kd1', 1)
 Parameter('ka2', 4.98173364330787e-13)
 Parameter('kd2', 0.015)
@@ -23,8 +23,8 @@ Parameter('kd3', 3E-4)
 Parameter('ka4', 3.623188E-4)
 Parameter('kd4', 0.3)
 
-Parameter('kpa', 1E-3)
-Parameter('kpu', 1)
+Parameter('kpa', 1E-6)
+Parameter('kpu', 1E-3)
 
 
 Parameter('L_0', 6.022E9)
