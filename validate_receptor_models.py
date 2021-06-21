@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
+import scipy.special as ss
 
 from adaptive_sorting import model as as_model
 from allosteric import model as allo_model
@@ -55,7 +56,7 @@ def dimeric_var_theory(params, doses):
     b1 = B1(params, doses)
     b2 = B2(params, doses)
     term1 = Rt - 2. * t - b1 - b2
-    return 1. / (4. / (term1) + 1./t)
+    return 1. / ((4. / term1) + 1./t)
 
 
 if __name__ == '__main__':
@@ -66,7 +67,7 @@ if __name__ == '__main__':
     crange = np.logspace(-2, 4, 15) * 1E-12*1E-5*6.022E23
     koffrange = 1 / np.arange(3, 20, 2)
     t_end = 100
-    num_traj = 500
+    num_traj = 100
 
     # --------------------------------------------------------------------------
     if model_type == 'allosteric':
@@ -99,14 +100,22 @@ if __name__ == '__main__':
         y = dose_response(model, crange, 'L_0', t_end, num_traj)
         mean_traj = np.mean(y['Cn'], axis=0)
         std_traj = np.std(y['Cn'], axis=0)
+        mean_B1 = np.mean(y['B1'], axis=0)
+        mean_B2 = np.mean(y['B2'], axis=0)
 
         fig, ax = plt.subplots()
-        plt.plot(crange, mean_traj, 'k--', label='simulation')
+        plt.plot(crange, T(dimeric_model.parameters, crange), 'k--', label='theory')
+
+        plt.plot(crange, mean_traj, 'k', label='T')
         ax.fill_between(crange, mean_traj + std_traj, mean_traj - std_traj, 'k', alpha=0.1)
-        plt.plot(crange, T(dimeric_model.parameters, crange), 'r--', label='theory')
+        plt.plot(crange, B1(dimeric_model.parameters, crange), 'b--')
+        plt.plot(crange, mean_B1, 'b', label='B1')
+        plt.plot(crange, B2(dimeric_model.parameters, crange), 'g--')
+        plt.plot(crange, mean_B2, 'g', label='B2')
+
         plt.xscale('log')
         plt.xlabel('Ligand #')
-        plt.ylabel('T')
+        plt.ylabel('Molecule #')
         plt.legend()
         plt.show()
 
@@ -121,6 +130,7 @@ if __name__ == '__main__':
         plt.plot(crange, std_traj, 'k--', label='simulation')
         plt.plot(crange, np.sqrt(mean_traj), 'r--', label='low-concentration theory')
         plt.plot(crange, np.sqrt(theory_var), 'b--', label='corrected theory')
+
         plt.xscale('log')
         plt.xlabel('Ligand #')
         plt.ylabel('Standard Deviation')

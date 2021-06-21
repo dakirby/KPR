@@ -39,6 +39,8 @@ Initial(R2(re=None, ri=None), R2_0)
 # Observables
 Observable('Nobs', N(s='p'))
 Observable('Cn', R1(re=1,ri=None)%L(r1=1,r2=2)%R2(re=2,ri=None))
+Observable('B1', R1(re=1,ri=None)%L(r1=1,r2=None))
+Observable('B2', R2(re=1,ri=None)%L(r1=None,r2=1))
 
 # Rules
 Rule('L_bind_R1', R1(re=None,ri=None) + L(r1=None,r2=None) | R1(re=1,ri=None)%L(r1=1,r2=None), ka1, kd1)
