@@ -1,0 +1,15 @@
+ccode_dir
+/home/duncan/.local/lib/python3.8/site-packages/phievo/CCodes
+
+cfile dictionary
+{'header': '/home/duncan/.local/lib/python3.8/site-packages/phievo/CCodes/integrator_header.h', 'utilities': '/home/duncan/.local/lib/python3.8/site-packages/phievo/CCodes/utilities.c', 'geometry': '/home/duncan/.local/lib/python3.8/site-packages/phievo/CCodes/linear_geometry.c', 'integrator': '/home/duncan/.local/lib/python3.8/site-packages/phievo/CCodes/euler_integrator.c', 'main': '/home/duncan/.local/lib/python3.8/site-packages/phievo/CCodes/main_general.c', 'fitness': 'example_adaptation/fitness_adaptation.c', 'init_history': 'example_adaptation/init_history_adaptation.c', 'input': 'example_adaptation/input_adaptation.c'}
+
+prmt dictionary
+{'nstep': 30000, 'ncelltot': 1, 'nneighbor': 3, 'ntries': 10, 'dt': 0.05, 'npopulation': 50, 'ngeneration': 301, 'tgeneration': 1.0, 'noutput': 1, 'ninput': 1, 'freq_stat': 5, 'frac_mutate': 0.5, 'redo': 1, 'nseed': 5, 'firstseed': 0, 'multipro_level': 1, 'pareto': 0, 'npareto_functions': 2, 'rshare': 0.0, 'plot': 0, 'langevin_noise': 0, 'restart': {'activated': False, 'freq': 50, 'kgeneration': 0}, 'stop_file': '/mnt/c/Users/Duncan/OneDrive - University of Toronto/Documents/University/Grad Studies Year 4/KPR Paper/KPR/example_adaptation/STOP.txt', 'workplace_dir': 'example_adaptation/Seed0/Workplace', 'generation': 300}
+
+ranges dictionary
+{'Species.degradation': 1.0, 'Species.diffusion': 1.0, 'TModule.rate': 1.0, 'TModule.basal': 0.0, 'CorePromoter.delay': 0, 'TFHill.hill': 5.0, 'TFHill.threshold': 1.0, 'PPI.association': 1.0, 'PPI.disassociation': 1.0, 'Phosphorylation.rate': 1.0, 'Phosphorylation.hill': 5.0, 'Phosphorylation.threshold': 1.0, 'Phosphorylation.dephosphorylation': 1.0}
+
+mutation dictionary
+{'random_gene()': 0.01, "random_gene('TF')": 0.01, "random_gene('Kinase')": 0.01, "random_gene('Ligand')": 0.0, "random_gene('Receptor')": 0.0, "random_Interaction('TFHill')": 0.002, "random_Interaction('PPI')": 0.002, "random_Interaction('Phosphorylation')": 0.002, "remove_Interaction('TFHill')": 0.005, "remove_Interaction('PPI')": 0.005, "remove_Interaction('CorePromoter')": 0.01, "remove_Interaction('Phosphorylation')": 0.005, "mutate_Node('Species')": 0.1, "mutate_Node('TFHill')": 0.1, "mutate_Node('CorePromoter')": 0.1, "mutate_Node('TModule')": 0.1, "mutate_Node('PPI')": 0.1, "mutate_Node('Phosphorylation')": 0.1, 'random_add_output()': 0.0, 'random_remove_output()': 0.0, 'random_change_output()': 0.1}
+
