@@ -27,7 +27,7 @@ pp.add_option('--model', '-m', action='store',
 pp.add_option('--test', '-t', action='store',
               help='name of file in CWD with network to run as test (need -i or -m options to supply initialization file to time .) Output goes to dir defined by -m if used, or CWD. Test.py file created by stat_best_net.py')
 pp.add_option('--network', '-n', action='store',
-              help='Curtom initial network')
+              help='Custom initial network')
 pp.add_option("--clear","-c", action="store_true", dest="clear",default=False)
 
 (options, arg) = pp.parse_args()  # NB arg=[], but required output
@@ -46,4 +46,3 @@ if __name__ == "__main__":
         phievo.clear_project(options=options)
     else:
         print('must specify either --test file OR --model directory.  Use -h for help')
-    

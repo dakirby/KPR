@@ -1,1 +1,0 @@
-(k_p*t*((KT*alpha*eta - c*R0*delta*kappa)**2 - k_off*(KT*alpha*eta + c*R0*delta*kappa)*(-eta + sqrt((k_off**2*eta**2 + (KT*alpha*eta - c*R0*delta*kappa)**2 + 2*k_off*eta*(KT*alpha*eta + c*R0*delta*kappa))/k_off**2))))/(2.*k_off**3*delta*sqrt((4*k_off*KT*alpha*eta**2 + (k_off*eta - KT*alpha*eta + c*R0*delta*kappa)**2)/k_off**2))
