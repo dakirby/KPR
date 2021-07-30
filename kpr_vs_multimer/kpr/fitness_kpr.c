@@ -60,10 +60,10 @@ void array_initialization(){
     }
 }
 
-void compute_output_array( double history[SIZE][2][NCELLTOT]){
+void compute_output_array( double history[SIZE][1][NCELLTOT]){
 	int i,j;
 	for(i=0;i<NCELLTOT;i++){ // Looping through cells (here effectively concentrations and dissociation times).
-		for(j=0;j<NOUTPUT;j++){ //there are two outputs, C_N and D_N
+		for(j=0;j<NOUTPUT;j++){ //there is ONE output # Duncan
 		    output_array_raw[i] += history[trackout[j]][1][i];
 		}
 	}

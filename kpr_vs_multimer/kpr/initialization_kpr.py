@@ -10,13 +10,13 @@ from phievo.Networks import mutation
 T=1.0 #typical time scale
 C=1.0 #typical concentration
 L=1.0 #typical size for diffusion
+R=10000 # typical number of receptors
 
 #dictionary key is the Class.attribute whose range is give an a real number or as a LIST
 # indicating the interval over which it has to vary
 
 dictionary_ranges={}
 dictionary_ranges['Species.degradation']=1.0/T
-#dictionary_ranges['Species.concentration']=C   # for certain species, eg kinases that are not trans
 dictionary_ranges['Species.diffusion']=L   # for ligands diffusion
 dictionary_ranges['TModule.rate']=C/T
 dictionary_ranges['TModule.basal']=0.0
@@ -29,6 +29,10 @@ dictionary_ranges['Phosphorylation.rate']=1.0/T
 dictionary_ranges['Phosphorylation.hill']=5.0
 dictionary_ranges['Phosphorylation.threshold']=C
 dictionary_ranges['Phosphorylation.dephosphorylation']=1.0/T
+dictionary_ranges['Simple_Phosphorylation.rate']=1.0/(C*T)
+dictionary_ranges['Simple_Phosphorylation.spontaneous_dephospho']=1.0/T
+dictionary_ranges['Initial_Concentration.concentration'] = C
+
 
 
 #################################################################################
@@ -38,9 +42,20 @@ dictionary_ranges['Phosphorylation.dephosphorylation']=1.0/T
 # skip by setting cfile[] = ' ' or ''
 
 cfile = {}
+cfile['header'] = 'header_kpr.h'
+cfile['utilities'] = 'utilities_kpr.c'
 cfile['fitness'] = 'fitness_kpr.c'
+cfile['geometry'] = 'linear_geometry.c'
 cfile['init_history'] = 'init_history_kpr.c'
-cfile['input'] =  'input_kpr.c'
+cfile['integrator'] = 'integrator_kpr.c'
+cfile['main'] = 'main_kpr.c'
+cfile['input'] = 'input_kpr.c'
+
+pfile = {}
+pfile["deriv2"] = "deriv2_kpr"
+pfile["interaction"] = "interaction_kpr"
+#pfile["pretty_graph"] = "Immune.pretty_graph_2_pMHC"
+pfile["plotdata"] = "plotdata_kpr"
 
 #################################################################################
 # mutation rates
@@ -75,7 +90,7 @@ dictionary_mutation['mutate_Node(\'Phosphorylation\')']=0.1
 #rates to change output tags.  See list_types_output array below
 dictionary_mutation['random_add_output()']=0.0
 dictionary_mutation['random_remove_output()']=0.0
-dictionary_mutation['random_change_output()']=0.1
+dictionary_mutation['random_change_output()']=0.0
 
 
 #############################################################################
@@ -102,7 +117,7 @@ prmt['dt'] = 0.05     # time step
 
 # Needed in evolution_gill to define evol algorithm and create initial network
 prmt['npopulation'] =50
-prmt['ngeneration'] =301
+prmt['ngeneration'] =10#301
 prmt['tgeneration']=1.0       #initial generation time (for gillespie), reset during evolution
 prmt['noutput']=1    # to define initial network
 prmt['ninput']=1
@@ -111,7 +126,7 @@ prmt['frac_mutate'] = 0.5 #fraction of networks to mutate
 prmt['redo'] = 1   # rerun the networks that do not change to compute fitness for different IC
 
 # used in run_evolution,
-prmt['nseed'] = 5  # number of times entire evol procedure repeated, see main program.
+prmt['nseed'] = 2#5  # number of times entire evol procedure repeated, see main program.
 prmt['firstseed'] = 0  #first seed
 
 
@@ -146,37 +161,57 @@ list_types_output=['Species']
 # Two optional functions to add input species or output genes, with IO index starting from 0.
 # Will overwrite default variants in evol_gillespie if supplied below
 
+def init_network(seed=-1):
+    if seed == -1:
+        seed = int(random.random()*510)
+    g = random.Random(seed)
+    L = mutation.Mutable_Network(g)
 
-def init_network():
-    # Create a random generator and a network
-    seed = 202102721
-    g = random.Random(seed)  # This define a new random number generator
-    L = mutation.Mutable_Network(g)  # Create an empty network
+    # the ligand (the pMHC on the antigen presenting cell)
+    parameters=[['Ligand']]
+    parameters.append(['Complexable'])
+    parameters.append(['Input',0])
+    Lig = L.new_Species(parameters)
 
-    # Let's make something that looks like a basic monomeric receptor
-    # Add ligand
-    parameters = [['Degradable', 0.5]]
-    parameters.append(['Ligand'])
+    # the receptor (on the T cell)
+    parameters = [['Receptor']]
+    parameters.append(['Phosphorylable'])
     parameters.append(['Complexable'])
-    TM0, prom0, S0 = L.new_gene(0.5, 5, parameters)
-    # Add receptor
+    R = L.new_Species(parameters)
+
+    # a kinase.
+    parameters = [['Kinase']]
+    parameters.append(['Phosphorylable'])
+    parameters.append(['Phospho', 0])
+    K1 = L.new_Species(parameters)
+
+    # a phosphatase.
+    parameters = [['Phosphatase']]
+    parameters.append(['Phosphorylable'])
+    parameters.append(['Phospho', 0])
+    P1 = L.new_Species(parameters)
+
+    # the complex generated: it is a kinase that is phosphorylable
+    parameters = [['Kinase']]
+    parameters.append(['Phosphorylable'])
+    parameters.append(['Phospho', 0])
+    parameters.append(['pMHC']) # label pMHC to indicate it is in the cascade ???
+    kappa = 1E-4
+    ppi, C = L.new_PPI(Lig, R, kappa, kappa, parameters)
+
+    # the downstream reporter molecule
     parameters = [['Degradable', 0.5]]
-    parameters.append(['Complexable'])
     parameters.append(['Phosphorylable'])
-    TM1, prom1, R1 = L.new_gene(0.5, 5, parameters)
-    # Add complexation between S0 and R1.
-    parameters.append(['Phosphorylable'])
-    ppi,R2 = L.new_PPI(S0, R1, 2.0, 1.0, parameters)
-    R2.add_type(["Kinase"])
-    # Add S3
-    parameters = [['Degradable', 0.5]]
-    parameters.append(['TF', 1])
-    parameters.append(['Phosphorylable'])
-    TM3, prom3, S3 = L.new_gene(0.5, 5, parameters)
-    # Add a phosphorylation of S3 by R2
-    S4, phospho = L.new_Phosphorylation(R2, S3, 2.0, 0.5, 1.0, 3)
-    S4.change_type("TF", [1])  # Note this is already the default value for a phosphorylated species
+    M1 = L.new_Species(parameters)
+
+    # Add phosphorylation of M1 by C
+    M2, phospho = L.new_Phosphorylation(C, M1, 2.0, 0.5, 1.0, 3)
+    M2.add_type(['Output',0])  # Sets the molecule to be read as output
+
     L.write_id()
+
+    # checks consecutive numbering for IO species.
+    L.verify_IO_numbers()
     return L
 
 
