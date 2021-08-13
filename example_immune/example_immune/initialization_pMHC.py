@@ -56,7 +56,7 @@ cfile['geometry'] = 'linear_geometry.c'
 cfile['init_history'] = 'init_history_pMHC.c'
 cfile['integrator'] = 'integrator_pMHC_improved.c'
 cfile['main'] = 'main_pMHC.c'
-cfile['input'] =  'input.c'
+cfile['input'] = 'input.c'
 # this one was commented : 'immune/input_adaptation1.c'
 
 pfile = {}
@@ -73,20 +73,20 @@ dictionary_mutation={}
 # Rates for nodes to add
 dictionary_mutation['random_gene()']=0.00
 dictionary_mutation['random_gene(\'TF\')']=0.00
-dictionary_mutation['random_gene(\'Kinase\')']=0.00
-dictionary_mutation['random_gene(\'Ligand\')']=0.00
-dictionary_mutation['random_gene(\'Receptor\')']=0.00
+dictionary_mutation['random_gene(\'Kinase\')']=0.05
+dictionary_mutation['random_gene(\'Ligand\')']=0.05
+dictionary_mutation['random_gene(\'Receptor\')']=0.05
 
 dictionary_mutation['random_Interaction(\'TFHill\')']=0.000
-dictionary_mutation['random_Interaction(\'PPI\')']=0.000
-dictionary_mutation['random_Interaction(\'Phosphorylation\')']=0.000
+dictionary_mutation['random_Interaction(\'PPI\')']=0.05
+dictionary_mutation['random_Interaction(\'Phosphorylation\')']=0.05
 dictionary_mutation['random_Interaction(\'Simple_Phosphorylation\')']=0.05
 
 # Rates for nodes to remove
 dictionary_mutation['remove_Interaction(\'TFHill\')']=0.000
-dictionary_mutation['remove_Interaction(\'PPI\')']=0.000
+dictionary_mutation['remove_Interaction(\'PPI\')']=0.5
 dictionary_mutation['remove_Interaction(\'CorePromoter\')']=0.00
-dictionary_mutation['remove_Interaction(\'Phosphorylation\')']=0.00
+dictionary_mutation['remove_Interaction(\'Phosphorylation\')']=0.5
 dictionary_mutation['remove_Interaction(\'Simple_Phosphorylation\')']=0.5
 dictionary_mutation['remove_Interaction(\'Simple_Dephosphorylation\')']=0.5
 dictionary_mutation['remove_Interaction(\'Initial_Concentration\')']=0.00
@@ -98,8 +98,8 @@ dictionary_mutation['mutate_Node(\'Species\')']=0.5
 dictionary_mutation['mutate_Node(\'TFHill\')']=0.0
 dictionary_mutation['mutate_Node(\'CorePromoter\')']=0.0
 dictionary_mutation['mutate_Node(\'TModule\')']=0.0
-dictionary_mutation['mutate_Node(\'PPI\')']=0.0
-dictionary_mutation['mutate_Node(\'Phosphorylation\')']=0.0
+dictionary_mutation['mutate_Node(\'PPI\')']=0.5
+dictionary_mutation['mutate_Node(\'Phosphorylation\')']=0.5
 dictionary_mutation['mutate_Node(\'Simple_Phosphorylation\')']=0.5
 dictionary_mutation['mutate_Node(\'Simple_Dephosphorylation\')']=0.5
 dictionary_mutation['mutate_Node(\'Initial_Concentration\')']=0.5

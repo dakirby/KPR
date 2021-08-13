@@ -5,12 +5,34 @@ import scipy.special as ss
 from adaptive_sorting import model as as_model
 from allosteric import model as allo_model
 from dimeric import model as dimeric_model
+from homodimeric import model as homodimeric_model
 from trimeric import model as trimeric_model
 from KPR1 import model as KPR1_model
 
 from pysb_methods import dose_response, response_curve
 
 
+# Homodimeric theory
+def Homodimer(params, doses):
+    Kb = params.k_b.value / params.kb.value
+    Kt = params.k_t.value / params.kt.value
+    Rt = params.R_0.value
+    L = doses
+    prefac = 1. / (8*Kb*L)
+    Teq = Kt*(Kb+L)**2 + 4*Kb*L*Rt - (Kb+L)*np.sqrt(Kt*(Kt*(Kb+L)**2 + 8*Kb*L*Rt))
+    return prefac * Teq
+
+
+def HomodimerB(params, doses):
+    Kb = params.k_b.value / params.kb.value
+    Kt = params.k_t.value / params.kt.value
+    Rt = params.R_0.value
+    L = doses
+    numerator = -Kb*Kt - Kt*L + np.sqrt(Kt * (Kt*(Kb + L)**2 + 8*Kb*L*Rt))
+    return numerator / (4*Kb)
+
+
+# Heterodimeric theory:
 def T(params, doses):
     K1 = params.kd1.value / params.ka1.value
     K2 = params.kd2.value / params.ka2.value
@@ -99,20 +121,29 @@ def dimeric_var_theory(params, doses):
     r1 = R1(params, doses)
     r2 = R2(params, doses)
     t = T(params, doses)
-    var = 1./ (2/t + 2/(Rt-t))
+    var = 1. / (2/t + 2/(Rt-t))
     # var = 1. / (4. / (Rt-b1-b2-2*t) + 1. / t)
+    # var = -(t*(b1-R1T+t)*(b2-R2T+t)) / (b2*R1T-R1T*R2T+b1*(R2T-b2)+t**2)
+    return var
+
+def homodimeric_var_theory(params, doses):
+    Rt = params.R_0.value
+    t = Homodimer(params, doses)
+    b = HomodimerB(params, doses)
+    # var = 1. / (2/t + 2/(Rt-t))
+    var = 1. / (4. / (Rt-b-2*t) + 1. / t)
     # var = -(t*(b1-R1T+t)*(b2-R2T+t)) / (b2*R1T-R1T*R2T+b1*(R2T-b2)+t**2)
     return var
 
 
 if __name__ == '__main__':
-    model_type = 'dimeric'
+    model_type = 'homodimeric'
     plot_dr = False
     plot_rc = False
     plot_sigma = True
     crange = np.logspace(-2, 4, 15) * 1E-12*1E-5*6.022E23
     koffrange = 1 / np.arange(3, 20, 2)
-    t_end = 100
+    t_end = 10000
     num_traj = 1000
 
     # --------------------------------------------------------------------------
@@ -134,6 +165,14 @@ if __name__ == '__main__':
         n_threshold = 2E2
         koff_name = 'kd4'  # DOES NOT MAINTAIN DETAILED BALANCE
         crange = 100 * crange
+    elif model_type == 'homodimeric':
+        model = dimeric_model
+        # Set K1=K3 and K2=K4
+        for i in [0, 1, 4, 5]:
+            model.parameters[i+2].value = model.parameters[i].value
+        n_threshold = 2E2
+        koff_name = 'kd4'  # DOES NOT MAINTAIN DETAILED BALANCE
+        crange = 100 * crange
     elif model_type == 'trimeric':
         model = trimeric_model
         n_threshold = 2E2
@@ -143,27 +182,40 @@ if __name__ == '__main__':
         raise NotImplementedError
 
     if plot_dr:
-        y = dose_response(model, crange, 'L_0', t_end, num_traj)
-        mean_traj = np.mean(y['Cn'], axis=0)
-        std_traj = np.std(y['Cn'], axis=0)
-        mean_B1 = np.mean(y['B1'], axis=0)
-        mean_B2 = np.mean(y['B2'], axis=0)
-        mean_R1f = np.mean(y['R1f'], axis=0)
-        mean_R2f = np.mean(y['R2f'], axis=0)
-
         fig, ax = plt.subplots()
-        plt.plot(crange, T(dimeric_model.parameters, crange), 'k--', label='theory')
 
-        plt.plot(crange, mean_traj, 'k', label='T')
-        ax.fill_between(crange, mean_traj + std_traj, mean_traj - std_traj, 'k', alpha=0.1)
-        plt.plot(crange, B1(dimeric_model.parameters, crange), 'b--')
-        plt.plot(crange, mean_B1, 'b', label='B1')
-        plt.plot(crange, B2(dimeric_model.parameters, crange), 'g--')
-        plt.plot(crange, mean_B2, 'g', label='B2')
-        plt.plot(crange, R1(dimeric_model.parameters, crange), 'm--')
-        plt.plot(crange, mean_R1f, 'm', label='R1f')
-        plt.plot(crange, R2(dimeric_model.parameters, crange), 'c--')
-        plt.plot(crange, mean_R2f, 'c', label='R2f')
+        if model_type == 'homodimeric':
+            y = dose_response(model, crange, 'L_0', t_end, num_traj)
+            mean_traj = np.mean(y['Cn'], axis=0)
+
+            y_h = dose_response(homodimeric_model, crange, 'L_0', t_end, num_traj)
+            mean_traj_h = np.mean(y_h['Cn'], axis=0)
+
+            plt.plot(crange, Homodimer(homodimeric_model.parameters, crange), 'b--', label='homodimer theory')
+            plt.plot(crange, T(dimeric_model.parameters, crange), 'k--', label='heterodimer theory')
+            plt.plot(crange, mean_traj, 'k', label='T heterodimer model')
+            plt.plot(crange, mean_traj_h, 'b', label='T homodimer model')
+
+        if model_type == 'dimeric':
+            y = dose_response(model, crange, 'L_0', t_end, num_traj)
+            mean_traj = np.mean(y['Cn'], axis=0)
+            std_traj = np.std(y['Cn'], axis=0)
+            mean_B1 = np.mean(y['B1'], axis=0)
+            mean_B2 = np.mean(y['B2'], axis=0)
+            mean_R1f = np.mean(y['R1f'], axis=0)
+            mean_R2f = np.mean(y['R2f'], axis=0)
+
+            plt.plot(crange, T(dimeric_model.parameters, crange), 'k--', label='theory')
+            plt.plot(crange, mean_traj, 'k', label='T')
+            ax.fill_between(crange, mean_traj + std_traj, mean_traj - std_traj, 'k', alpha=0.1)
+            plt.plot(crange, B1(dimeric_model.parameters, crange), 'b--')
+            plt.plot(crange, mean_B1, 'b', label='B1')
+            plt.plot(crange, B2(dimeric_model.parameters, crange), 'g--')
+            plt.plot(crange, mean_B2, 'g', label='B2')
+            plt.plot(crange, R1(dimeric_model.parameters, crange), 'm--')
+            plt.plot(crange, mean_R1f, 'm', label='R1f')
+            plt.plot(crange, R2(dimeric_model.parameters, crange), 'c--')
+            plt.plot(crange, mean_R2f, 'c', label='R2f')
 
         plt.xscale('log')
         plt.xlabel('Ligand #')
@@ -172,9 +224,14 @@ if __name__ == '__main__':
         plt.show()
 
     if plot_sigma:
-        assert model_type == 'dimeric'
-        theory_var = dimeric_var_theory(dimeric_model.parameters, crange)
-        y = dose_response(model, crange, 'L_0', t_end, num_traj)
+        assert model_type in ['dimeric', 'homodimeric']
+        if model_type == 'dimeric':
+            theory_var = dimeric_var_theory(dimeric_model.parameters, crange)
+            y = dose_response(model, crange, 'L_0', t_end, num_traj)
+        elif model_type == 'homodimeric':
+            theory_var = homodimeric_var_theory(homodimeric_model.parameters, crange)
+            y = dose_response(homodimeric_model, crange, 'L_0', t_end, num_traj)
+
         mean_traj = np.mean(y['Cn'], axis=0)
         std_traj = np.std(y['Cn'], axis=0)
 
