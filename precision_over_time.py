@@ -52,8 +52,8 @@ def plot_error(test_c, t_end, dt):
         if labels[idx] == 'Homodimeric':
             test_c = test_c / 1E5
     ax.set_xlabel('time (s)')
-    ax.set_ylabel(r'Log $\eta$ = $\frac{\langle C_n \rangle}{\langle C_n \rangle + \langle C_w \rangle}$')
-    ax.set_yscale('log')
+    ax.set_ylabel(r'$\eta$ = $\frac{\langle C_n \rangle}{\langle C_n \rangle + \langle C_w \rangle}$')
+    ax.set_ylim([0, 1])
     ax.legend()
     plt.show()
 
