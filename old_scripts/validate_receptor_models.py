@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import scipy.special as ss
+import os
 
 from adaptive_sorting import model as as_model
 from allosteric import model as allo_model
@@ -136,6 +137,14 @@ def homodimeric_var_theory(params, doses):
     return var
 
 
+def homodimeric_signal_var_theory(params, doses, time):
+    kpt = params.kp.value * time
+    meanR = Homodimer(params, doses)
+    varR = homodimeric_var_theory(params, doses)
+    var = kpt*meanR + kpt**2 * varR
+    return var
+
+
 if __name__ == '__main__':
     model_type = 'homodimeric'
     plot_dr = False
@@ -145,6 +154,7 @@ if __name__ == '__main__':
     koffrange = 1 / np.arange(3, 20, 2)
     t_end = 10000
     num_traj = 1000
+    outdir = os.getcwd()
 
     # --------------------------------------------------------------------------
     if model_type == 'allosteric':
@@ -195,6 +205,7 @@ if __name__ == '__main__':
             plt.plot(crange, T(dimeric_model.parameters, crange), 'k--', label='heterodimer theory')
             plt.plot(crange, mean_traj, 'k', label='T heterodimer model')
             plt.plot(crange, mean_traj_h, 'b', label='T homodimer model')
+            plt.legend()
 
         if model_type == 'dimeric':
             y = dose_response(model, crange, 'L_0', t_end, num_traj)
@@ -230,21 +241,26 @@ if __name__ == '__main__':
             y = dose_response(model, crange, 'L_0', t_end, num_traj)
         elif model_type == 'homodimeric':
             theory_var = homodimeric_var_theory(homodimeric_model.parameters, crange)
+            theory_sig_var = homodimeric_signal_var_theory(homodimeric_model.parameters, crange, t_end)
             y = dose_response(homodimeric_model, crange, 'L_0', t_end, num_traj)
 
         mean_traj = np.mean(y['Cn'], axis=0)
         std_traj = np.std(y['Cn'], axis=0)
+        mean_sig = np.mean(y['Nobs'], axis=0)
+        std_sig = np.std(y['Nobs'], axis=0)
+
 
         fig, ax = plt.subplots()
-        plt.plot(crange, std_traj, 'k', label='simulation')
-        plt.plot(crange, np.sqrt(mean_traj), 'r--', label='low-concentration theory')
-        plt.plot(crange, np.sqrt(theory_var), 'b--', label='corrected theory')
+        plt.plot(crange, std_traj, 'k', label='receptor variance: simulation')
+        plt.plot(crange, np.sqrt(theory_var), 'b--', label='receptor variance: theory')
+        plt.plot(crange, std_sig, 'y', label='signal variance: simulation')
+        plt.plot(crange, np.sqrt(theory_sig_var), 'g--', label='signal variance: theory')
 
         plt.xscale('log')
         plt.xlabel('Ligand #')
         plt.ylabel('Standard Deviation')
         plt.legend()
-        plt.show()
+        plt.savefig(os.path.join(outdir, 'output', model_type + '_variance_validation.pdf'))
 
     if plot_rc:
         response = response_curve(model, crange, 'L_0', koffrange, koff_name, n_threshold, 'Cn', t_end, num_traj)

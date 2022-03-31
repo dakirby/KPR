@@ -20,7 +20,6 @@ Parameter('kt', 3.623E-4)
 Parameter('k_t', 3E-4)
 
 Parameter('kp', 1E-6)
-Parameter('ku', 1E-3)
 
 Parameter('kb_self', 3.321E-14)  # =(2E5 M^-1 s^-1)/(NA*(1E-5 Litres)))
 Parameter('k_b_self', 10.)

@@ -1,6 +1,7 @@
 from pysb.simulator.bng import BngSimulator
 import numpy as np
 import warnings
+from tqdm import tqdm
 
 
 def time_course(model, t_end, n_runs, num_times=10, params=None):
@@ -22,7 +23,8 @@ def dose_response(model, c_range, c_name, t_end, n_runs, num_times=10):
     observables = model.observables.keys()
     resp = {obs: np.zeros((n_runs, len(c_range))) for obs in observables}
     # simulate
-    for c_idx, c in enumerate(c_range):
+    for c in tqdm(c_range):
+        c_idx = np.where(c == c_range)[0][0]
         model.parameters[c_name].value = c
         sim = BngSimulator(model)
         x = sim.run(tspan=t, verbose=False, n_runs=n_runs, method='ssa')

@@ -7,6 +7,7 @@ import warnings
 from adaptive_sorting import model as as_model
 from allosteric import model as allo_model
 from dimeric import model as dimeric_model
+from homodimeric import model as homodimeric_model
 
 
 def dose_response(model, c_range, c_name, t_end, n_runs, num_times=10):
@@ -56,6 +57,35 @@ def cEst_dimeric(T, model):
     return (numerator_t1 - np.sqrt(numerator_t2)) / (8*K4*T)
 
 
+def theta_dimeric(T, model):
+    """Theoretical number of homodimeric receptor complexes at equilibrium"""
+    Rt = model.parameters['R_0'].value
+    Kt = model.parameters['k_t'].value / model.parameters['kt'].value
+    Kb = model.parameters['k_b'].value / model.parameters['kb'].value
+    L = model.parameters['L_0']
+    numerator_t1 = Kt*(Kb + L)**2 + 4*Kb*L*Rt
+    numerator_t2 = np.sqrt(Kt*(Kt*(Kb+L)**2+8*Kb*L*Rt))
+    return (numerator_t1 - (Kb+L)*numerator_t2) / (8*Kb*L)
+
+
+def theta_dimeric_1(T, model):
+    """Theoretical number of homodimeric one-receptor-plus-ligand complexes at equilibrium"""
+    Rt = model.parameters['R_0'].value
+    Kt = model.parameters['k_t'].value / model.parameters['kt'].value
+    Kb = model.parameters['k_b'].value / model.parameters['kb'].value
+    L = model.parameters['L_0']
+    numerator_t1 = -Kb*Kt-Kt*L
+    numerator_t2 = np.sqrt(Kt*(Kt*(Kb+L)**2+8*Kb*L*Rt))
+    return (numerator_t1 + numerator_t2) / (4*Kb)
+
+
+def theta_dimeric_var(T, model):
+    thetaN = theta_dimeric(T, model)
+    Rt = model.parameters['R_0'].value
+    Rfree = Rt - theta_dimeric_1(T, model) - 2*thetaN
+    return (thetaN**-1 + 4/Rfree)**-1
+
+
 if __name__ == '__main__':
     model_type = 'dimeric'
     t_end = 500
@@ -66,6 +96,10 @@ if __name__ == '__main__':
         model = dimeric_model
         crange = np.logspace(0, 3, 15) * 1E-9*1E-5*6.022E23
         est_fn = cEst_dimeric
+    elif model_type == 'homodimeric':
+        model = homodimeric_model
+        crange = np.logspace(0, 3, 15) * 1E-9*1E-5*6.022E23
+        est_fn = theta_dimeric
     else:
         raise NotImplementedError
 
@@ -76,15 +110,32 @@ if __name__ == '__main__':
     var_traj = np.var(y['Cn'], axis=0)
     std_traj = np.sqrt(var_traj)
 
+    mean_sig = np.mean(y['Nobs'], axis=0)
+    var_sig = np.var(y['Nobs'], axis=0)
+    std_sig = np.sqrt(var_sig)
+
     print("Plotting")
+    # fig, ax = plt.subplots()
+    # plt.plot(crange, mean_traj)
+    # ax.fill_between(crange, mean_traj + std_traj, mean_traj - std_traj, 'b', alpha=0.2)
+    # # theory says variance in Cn should be Var(Cn) = Cn
+    # plt.plot(crange, mean_traj + np.sqrt(mean_traj), 'k--')
+    # plt.plot(crange, mean_traj - np.sqrt(mean_traj), 'k--')
+    # plt.xscale('log')
+    # plt.xlabel('c')
+    # plt.ylabel('Signal (T)')
+    # plt.title('Dimeric Receptor')
+    # plt.savefig('output'+os.sep+'dimeric_variance_validation.pdf')
+
+
     fig, ax = plt.subplots()
-    plt.plot(crange, mean_traj)
-    ax.fill_between(crange, mean_traj + std_traj, mean_traj - std_traj, 'b', alpha=0.2)
-    # theory says variance in Cn should be Var(Cn) = Cn
-    plt.plot(crange, mean_traj + np.sqrt(mean_traj), 'k--')
-    plt.plot(crange, mean_traj - np.sqrt(mean_traj), 'k--')
+    plt.plot(crange, mean_sig)
+    ax.fill_between(crange, mean_sig + std_sig, mean_sig - std_sig, 'b', alpha=0.2)
+    # theory says variance in Nobs should be Var(Nobs) = kp*t*(Cn+kp*t*Var(Cn))
+    plt.plot(crange, mean_sig + np.sqrt(mean_traj), 'k--')
+    plt.plot(crange, mean_sig - np.sqrt(mean_traj), 'k--')
     plt.xscale('log')
     plt.xlabel('c')
-    plt.ylabel('Signal (T)')
-    plt.title('Dimeric Receptor')
-    plt.savefig('output'+os.sep+'dimeric_variance_validation.pdf')
+    plt.ylabel('Signal')
+    plt.title(model_type+' receptor')
+    plt.savefig('output'+os.sep+model_type+'_variance_validation.pdf')
