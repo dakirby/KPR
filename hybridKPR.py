@@ -26,6 +26,7 @@ class HybridKPR():
         self.STATE_TRAJ = [0]
 
         self.DETERMINSTIC_FLAG = True
+        self.ALL_DET = False
 
         self.PHOS_FLAG = False
         self.KP = params.get('KP', 1)
@@ -259,12 +260,13 @@ class HybridKPR():
                 if self.STATE == 0:
                     self.STATE = 1  # receptor will go to state 1
                     tau = np.random.exponential(scale=1.0/(self.KON * self.C))
-                    if self.N == 0:
+                    if self.N == 0 and not self.PHOS_FLAG:
                         self.SIGNAL.append(self.SIGNAL[-1] + self.BETA)
                     else:
                         self.SIGNAL.append(self.SIGNAL[-1])
                     self.TIME.append(self.TIME[-1] + tau)
                     self.STATE_TRAJ.append(self.STATE)
+
                 elif self.STATE == self.N + 1:
                     if self.PHOS_FLAG:
                         tau_list = [np.random.exponential(scale=1.0/(self.KP)),
@@ -282,7 +284,7 @@ class HybridKPR():
                             self.STATE_TRAJ.append(self.STATE)
 
                     else:
-                        if self.DETERMINSTIC_FLAG:
+                        if self.DETERMINSTIC_FLAG or self.ALL_DET:
                             tau = self.TN
                         else:
                             tau = np.random.exponential(scale=1.0/(self.KOFF))
@@ -297,7 +299,10 @@ class HybridKPR():
                         # ligand falls off
                         self.STATE = 0
                         self.SIGNAL.append(self.SIGNAL[-1])
-                        self.TIME.append(self.TIME[-1] + tau_list[1])
+                        if self.ALL_DET:
+                            self.TIME.append(self.TIME[-1] + self.TN)
+                        else:
+                            self.TIME.append(self.TIME[-1] + tau_list[1])
                         self.STATE_TRAJ.append(self.STATE)
                     else:
                         # move to next proofreading state
@@ -306,7 +311,10 @@ class HybridKPR():
                             self.SIGNAL.append(self.SIGNAL[-1] + self.BETA)
                         else:
                             self.SIGNAL.append(self.SIGNAL[-1])
-                        self.TIME.append(self.TIME[-1] + tau_list[0])
+                        if self.ALL_DET:
+                            self.TIME.append(self.TIME[-1] + 1/self.KF)
+                        else:
+                            self.TIME.append(self.TIME[-1] + tau_list[0])
                         self.STATE_TRAJ.append(self.STATE)
             time_trajs.append(deepcopy(self.TIME))
             signal_trajs.append(deepcopy(self.SIGNAL))
@@ -501,9 +509,9 @@ def HN_vs_N(nsteps, nsims, DETERMINSTIC_FLAG=True, PHOS_FLAG=False):
     plt.show()
 
 
-def FLD_vs_N(nsims, DETERMINSTIC_FLAG=True, target_time=100., ReceptorSS=True, plotFLAG=True, PHOS_FLAG=False, params={'KOFF': 10.}, f=0, dt=0.0001, NTEST=5, zeta=0.1, fname=''):
+def FLD_vs_N(nsims, DETERMINSTIC_FLAG=True, target_time=100., ReceptorSS=True, plotFLAG=True, PHOS_FLAG=False, params={'KOFF': 10.}, f=0, dt=0.0001, NTEST=5, zeta=0.1, fname='', TAU_KOFF=False, ALL_DET=False, TQDM=False):
     Nrange = list(range(NTEST))
-    FLD = []
+    FLD, HN = [], []
     # Compute FLD
     for n in tqdm(Nrange):
         params.update({'N': n})
@@ -516,19 +524,25 @@ def FLD_vs_N(nsims, DETERMINSTIC_FLAG=True, target_time=100., ReceptorSS=True, p
         if PHOS_FLAG:
             KPRk1.PHOS_FLAG = True
             KPRk2.PHOS_FLAG = True
+        if TAU_KOFF:
+            KPRk1.TN = 1./KPRk1.KOFF
+            KPRk2.TN = 1./KPRk2.KOFF
+        if ALL_DET:
+            KPRk1.ALL_DET = True
+            KPRk2.ALL_DET = True
 
         # Run explicit simulations
-        if f == 0:
+        if f == 0 and not ALL_DET:
             def __func__(m):
                 return m.sim
-        elif f == 1:
+        elif f == 1 and not ALL_DET:
             def __func__(m):
                 return m.explicit_sim_1
-        elif f == 2:
+        elif f == 2 or ALL_DET:
             def __func__(m):
                 return m.explicit_sim_2
-        signal_trajs_1, time_trajs_1, state_trajs_1 = __func__(KPRk1)(target_time, dt, nsims, ReceptorSS=ReceptorSS, TQDM=False)
-        signal_trajs_2, time_trajs_2, state_trajs_2 = __func__(KPRk2)(target_time, dt, nsims, ReceptorSS=ReceptorSS, TQDM=False)
+        signal_trajs_1, time_trajs_1, state_trajs_1 = __func__(KPRk1)(target_time, dt, nsims, ReceptorSS=ReceptorSS, TQDM=TQDM)
+        signal_trajs_2, time_trajs_2, state_trajs_2 = __func__(KPRk2)(target_time, dt, nsims, ReceptorSS=ReceptorSS, TQDM=TQDM)
 
         sig_array_1, t_array_1, state_array_1 = aggregate_trajectories(signal_trajs_1, time_trajs_1, state_trajs_1, target_t=target_time)
         mean_sig_1, var_sig_1 = sample_statistics(sig_array_1)
@@ -542,19 +556,24 @@ def FLD_vs_N(nsims, DETERMINSTIC_FLAG=True, target_time=100., ReceptorSS=True, p
         v2 = var_sig_2[-1]
 
         FLD.append(np.square(np.subtract(m1, m2)) / (v1 + v2))
+        HN.append(m2/m1)
 
     FLD_ratio = [f / FLD[0] for f in FLD]
-
-    # Compute Hopfield Ninio
-    g = deepcopy(KPRk1.KOFF / KPRk1.KF)
-    HN = [((1+g)/(1+zeta*g))**i for i in Nrange]
+    HN_ratio = [f / HN[0] for f in HN]
 
     # print results to copy over to Mathematica
     txt = "{"
     for i in range(len(FLD_ratio)):
-        txt = txt + "{{{0}, {1:.2f}}},".format(i, FLD_ratio[i])
+        txt = txt + "{{{0}, {1:.4f}}},".format(i, FLD_ratio[i])
     txt = txt[:-1] + "}"
     print(txt)
+
+    # print HN results to copy over to Mathematica
+    txt2 = "HN: {"
+    for i in range(len(HN_ratio)):
+        txt2 = txt2 + "{{{0}, {1:.2f}}},".format(i, HN_ratio[i])
+    txt2 = txt2[:-1] + "}"
+    print(txt2)
 
     # save results
     txt += "\n\n{"
@@ -577,7 +596,7 @@ def FLD_vs_N(nsims, DETERMINSTIC_FLAG=True, target_time=100., ReceptorSS=True, p
     if plotFLAG:
         fig, ax = plt.subplots()
         plt.plot(Nrange, FLD_ratio, 'b', label='FLD')
-        plt.plot(Nrange, HN, 'k--', label='HN')
+        plt.plot(Nrange, HN_ratio, 'k--', label='HN')
         plt.legend()
         ax.set_yscale('log')
         plt.show()
@@ -658,18 +677,25 @@ if __name__ == '__main__':
     # FLD_vs_N(5000, DETERMINSTIC_FLAG=False, target_time=5, ReceptorSS=False, plotFLAG=False, PHOS_FLAG=True, f=2, dt=0.0001)
     # FLD_vs_N(5000, DETERMINSTIC_FLAG=False, target_time=50, ReceptorSS=False, plotFLAG=False, PHOS_FLAG=True, f=2, dt=0.0001)
 
-    # FLD scaling of the hybrid model
-    # FLD_vs_N(50, DETERMINSTIC_FLAG=True, target_time=100,
+    # FLD with tau = 1/koff
+    # FLD_vs_N(5000, DETERMINSTIC_FLAG=True, target_time=100,
     #          ReceptorSS=True, plotFLAG=False, params={'BETA': 10},
-    #          f=1, fname='FLD_vs_N_c1.txt', dt=0.001)
-    # FLD_vs_N(200, DETERMINSTIC_FLAG=True, target_time=100,
-    #          ReceptorSS=True, plotFLAG=False, params={'BETA': 10, 'C': 10.},
-    #          f=1, fname='FLD_vs_N_c10.txt', dt=0.001)
-    # FLD_vs_N(200, DETERMINSTIC_FLAG=True, target_time=100,
-    #          ReceptorSS=True, plotFLAG=False, params={'BETA': 10, 'C': 0.1},
-    #          f=1, fname='FLD_vs_N_c01.txt', dt=0.001)
+    #          f=2, fname='FLD_vs_N_t_is_1_over_koff.txt', dt=0.001,
+    #          TAU_KOFF=True, NTEST=6)
 
-    # FLD scaling at high g
-    # FLD_vs_N(2000, DETERMINSTIC_FLAG=True, target_time=100,
-    #          ReceptorSS=True, plotFLAG=False, params={'BETA': 10, 'KF': 0.1},
-    #          f=2, fname='FLD_vs_N_c1_high_g.txt', dt=0.001)
+    # Scaling at high g
+    # FLD_vs_N(50, DETERMINSTIC_FLAG=True, target_time=100,
+    #          ReceptorSS=True, plotFLAG=False, params={'BETA': 10, 'KF': 10./3.},
+    #          f=1, fname='FLD_vs_N_t_is_1_over_koff_low_g.txt', dt=0.001,
+    #          TAU_KOFF=True, NTEST=6)
+
+    # FLD with all steps except binding deterministic
+    # FLD_vs_N(5000, DETERMINSTIC_FLAG=True, target_time=100,
+    #          ReceptorSS=True, plotFLAG=False, params={'BETA': 10, 'KF': 10./3.},
+    #          f=2, fname='FLD_vs_N_all_deterministic_g3.txt', dt=0.001,
+    #          ALL_DET=True, TAU_KOFF=True)
+
+    # FLD_vs_N(5000, DETERMINSTIC_FLAG=True, target_time=100,
+    #          ReceptorSS=True, plotFLAG=False, params={'BETA': 10, 'KF': 1.},
+    #          f=2, fname='FLD_vs_N_all_deterministic_g10.txt', dt=0.001,
+    #          ALL_DET=True, TAU_KOFF=True)
